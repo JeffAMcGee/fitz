@@ -29,7 +29,7 @@ namespace Fitz {
 const int DELAY_LENGTH=10;
 
 bool Factory::initialized_ = false;
-Qt::AlignmentFlags Factory::titlealign_ = Qt::AlignHCenter;
+bool Factory::autoMax_ = false;
 
 extern "C" KDecorationFactory* create_factory()
 {
@@ -86,17 +86,10 @@ bool Factory::readConfig() {
 	KConfig config("kwinfitzrc");
 	config.setGroup("General");
 
-	// grab settings
-	Qt::AlignmentFlags oldalign = titlealign_;
-	QString value = config.readEntry("TitleAlignment", "AlignHCenter");
-	if (value == "AlignLeft") titlealign_ = Qt::AlignLeft;
-	else if (value == "AlignHCenter") titlealign_ = Qt::AlignHCenter;
-	else if (value == "AlignRight") titlealign_ = Qt::AlignRight;
+	autoMax_ = config.readBoolEntry("autoMax", false);
 
-	if (oldalign == titlealign_)
-		return false;
-	else
-		return true;
+	return false;
+
 }
 
 void Factory::addBar(Bar* bar) {

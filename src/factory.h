@@ -33,7 +33,7 @@ class Factory: public QObject, public KDecorationFactory {
 	virtual KDecoration *createDecoration(KDecorationBridge *b);
 	virtual bool reset(unsigned long changed);
 
-	static Qt::AlignmentFlags titleAlign();
+	static bool autoMax();
 	
 	const QPixmap* getPixmap(BtnImg::Img i);
 	
@@ -50,13 +50,13 @@ class Factory: public QObject, public KDecorationFactory {
 	friend bool fitzFactoryInitialized();
 
 	static bool initialized_;
-	static Qt::AlignmentFlags titlealign_;
+	static bool autoMax_;
 	QPtrList<Bar> list;
 	ButtonCache *cache;
 };
 
-inline Qt::AlignmentFlags Factory::titleAlign()
-	{ return titlealign_; }
+inline bool Factory::autoMax()
+	{ return autoMax_; }
 
 
 } // namespace Fitz

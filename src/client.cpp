@@ -95,12 +95,14 @@ void Client::init() {
 	bar->addButtons(btns);
 
 	//maximize the window - eventually this should be optional and off by default see BUGS
-	if(type == NET::Normal)
+	if(Factory::autoMax() && type == NET::Normal)
 		QTimer::singleShot(20,this,SLOT(maximizeFull()));
 }
 
 void Client::maximizeFull() {
-	maximize(KDecoration::MaximizeFull);
+	QWidget *w=widget();
+	if(w->width()>500 && w->height()>400)
+		maximize(KDecoration::MaximizeFull);
 }
 
 // window active state has changed

@@ -1,7 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 
-#don't make the kcontrol module - At the moment, Fitz ignores its settings
-#SUBDIRS = config
+SUBDIRS = config
 
 KDE_CXXFLAGS = -DQT_PLUGIN
 
