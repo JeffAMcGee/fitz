@@ -1,0 +1,19 @@
+0.2:
+handle dialogs nicely
+play nice with the gimp
+support for window shading
+
+0.3 or later:
+wider buttons
+	easier to click according to Fitt's Law
+make more of the buttons toggleable
+	(keepAbove, keepBelow, Shade, and  should look different when set)
+make the frame and the button bar different colors
+reduce the complexity of the button bar mask
+allow fitz style click on non-maximized windows
+	Trap the mouse inside a window until the user taps the edge twice. This must be off by default.
+add more buttons to the bar
+	This style needs a move button.  Also Fullscreen and spacers would be nice.
+show part of the title in the button bar (???)
+make the border resizeable
+make auto maximize optional

@@ -1,0 +1,72 @@
+These are known bugs in Fitz.  Most of them will be fixed eventually. There are
+also unknown bugs, which probably won't be fixed until someone like you finds
+them and tells me about it or fixes it themselves.
+
+/*=== Scribbling on Other Applications =======================================*/
+Fitz assumes that the top-right corner is empty. If an application actually puts
+something there, Fitz will cover it up, which will look bad and may hurt
+functionality.
+
+applications that use their top-right corner:
+gimp - All sorts of stuff (I currently switch decorations to use the gimp)
+firefox - the about firefox button
+konsole - some programs (including lynx) use that corner of the console if the
+		menu is off
+old-school X programs that put the help menu on the right side
+
+Dialog titlebars will fix some of this.
+
+/*=== Configuration Change Causes show() on All Desktops =====================*/
+Normally when Fitz starts, kwin calls show() for each of the windows on the
+current desktop; however, when Fitz is started after changing the decoration or
+settings from KControl, kwin calls show for every window -- including windows
+on other virtual desktops.  As a result, Fitz draws bars when it should not.
+To avoid this, I maximize every application window when starting up.
+Eventually the maximizing should be optional.
+
+/*=== Lower Without Paint Event ==============================================*/
+Assume you have the following two windows: ( \VX is the Fitz::Bar at the top
+right corner)
+
++-Konsole <2>-----+
+|              \VX|
+| +-Konsole-+     |
+| |      \VX|     |
+| |         |     |
+| +---------+     |
+|                 |
++-----------------+
+
+If you middle click on a border of the smaller window to lower it or if you set
+"Focus Follows Mouse" in Window Behavior, set autoraise with a delay, and then
+hover the mouse over the larger window, you will get something like this:
+
++-Konsole <2>-----+
+|              \VX|
+|                 |
+|        \VX      |
+|                 |
+|                 |
+|                 |
++-----------------+
+
+The Fitz::Bar of the smaller window does not go away because this does not
+generate a paint event or any other call to any of the KDecoration virtual
+functions.  Fixing this will probably require a change in kwin like a new signal
+zorderChange() or two signals: lower() and raise().
+
+/*=== Title Bar Doubleclick ==================================================*/
+Title bar doubleclick is ignored because there is no title bar. - Should the top
+part of the frame be treated as a titlebar?
+
+/*=== Shade ==================================================================*/
+At the moment, shade makes no sense for this style.  As a result, the shade
+button currently lowers the window. (Why isn't there a
+{move,lower,shade,fullscreen} button (maybe I should visit bugs.kde.org)) The
+Right Way to shade for this style is to make a shaded window use the dialog
+style title bar, but the dialog style title bar is in the TODO list.
+
+/*=== Border Color ===========================================================*/
+In this style, the frame, buttons, and title bar are all kind of the same thing
+- they don't look right unless they are the same color.  - Use the title bar
+colors for the button bar and make the frame a different color.

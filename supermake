@@ -1,0 +1,4 @@
+make distclean
+WANT_AUTOCONF_2_5='1' WANT_AUTOMAKE_1_6='1' gmake -f Makefile.cvs
+CFLAGS='-O0' CXXFLAGS='-O0' ./configure -C --enable-debug --prefix=/home/jeff/fitz/kde
+make

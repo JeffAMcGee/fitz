@@ -1,0 +1,610 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head>
+    <meta name="generator" content="HTML Tidy, see www.w3.org">
+
+    
+    <title>HOWTO: KWin Window Manager Decorations</title><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<style type="text/css">
+ pre {  border: solid #EEEEEE; padding:
+    1ex; background-color: #EEEEEE; font-size: 0.9em; font-family:
+    monospace; }
+</style></head>
+
+
+  <body>
+    <div id="standard">
+      <h1>HOWTO: KWin Window Manager Decorations</h1>
+
+      <p>The default window manager for KDE is KWin. KWin has a
+      very flexible theming mechanism, because all decorations are
+      ultimately plugins to the window manager. This allows you to
+      change both the look (appearance) and feel (behavior) of the
+      window manager.</p>
+
+      <p>This tutorial covers creating a native KWin decoration
+      using C++ code, as opposed to creating a decoration for
+      "pixmap engine", such as the IceWM plugin. The material
+      presented here may be of use in creating a new pixmap engine
+      however.</p>
+
+      <p>The sample code for this tutorial, along with a copy of
+      this documentation, can be found here: <a href="http://www.usermode.org/code/example-0.5.tar.gz">example-0.5.tar.gz</a> [39K]. The code
+      snippets shown in this documentation are not documented, but
+      the source code itself is.</p>
+
+      <p>This tutorial is assuming that you have some experience
+      with C++ and the Qt toolkit. Specifically, it assumes that
+      you understand C++ inheritance, the Qt signal/slot paradigm,
+      and are familiar with the common Qt classes. If you have
+      never done any Qt programming, please stop and take some time
+      to familiarize yourself with this excellent toolkit. It comes
+      with some of the best documentation for a development library
+      that I have seen.</p>
+
+      <p><em><strong>Note:</strong> This tutorial and accompanying
+      example code are based on KDE 3.2. It is not applicable to
+      earlier versions of KDE.</em></p>
+
+      <h2>Step One: Proper Planning</h2>
+
+      <p>Before you start working on a new decoration, you should
+      have some idea as to what the finished decoration will look
+      like. All usable window managers will have a title bar
+      containing buttons and a frame which surround the
+      application. There are two classic layouts for window manager
+      decorations, with some minor variations. For lack of standard
+      names, I'll call them the "motif" and "next" layouts.</p>
+
+      <table summary="layout styles" width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tbody>
+          <tr>
+            <th align="center">The "motif" layout</th>
+
+            <th align="center">The "next" layout</th>
+          </tr>
+
+          <tr>
+            <td align="center"><img src="kwintheme_files/motiflayout.png" width="181" height="121" alt="motif layout"></td>
+
+            <td align="center"><img src="kwintheme_files/nextlayout.png" width="171" height="116" alt="next layout"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>The "motif" layout is the most popular. The title bar and
+      window are surrounded by a thick frame. Sometimes the frame
+      only wraps the left, right and bottom of the window, with the
+      title bar being the top part of the frame.</p>
+
+      <p>The "next" layout was first seen, to the best of my
+      knowledge, in the NeXT desktop. It is used by the Windowmaker
+      and Blackbox window managers, as well as several KDE
+      decorations. There is only a titlebar on top and a "handle"
+      on the bottom.</p>
+
+      <p>The example decoration will use the motif layout because
+      it is traditional. Since this is an example, I'm going to
+      make everything look quite plain with simple lines
+      delineating the parts of the decoration. Think of the example
+      as a template from which to create your own, more aesthetic,
+      decorations.</p>
+
+      <p>Drawing out the decoration in a paint program like GIMP is
+      very helpful. Sometimes what you think will look good won't,
+      once you actually see it.</p>
+
+      <p>Education is also a part of planning. Read the
+      <code>kdecoration.h</code> and <code>kdecorationfactory.h</code> 
+      header files. They are located in the
+      <code>$KDEBASE/include</code> directory, and are very well
+      documented. These should be your primary documentation for the
+      KWin API. Read the source code for other KDE decorations.</p>
+
+      <h3>Usability</h3>
+
+      <p>Always keep the usability of the decoration in mind. No
+      matter how gorgeous the look, no one will use it if it keeps
+      getting in their way. Some simple rules will keep your
+      decoration usable by most people. If you must break any of
+      the following rules, please have a good reason to do so.</p>
+
+      <dl><dt>Honor Standard Behavior</dt><dd>There are certain standard behaviors that users will
+        expect. Users do not want to change the way they interact
+        with windows every time they change the decoration. The
+        title bar should be on the top. The maximize button should
+        maximize the window. The frame or handle should be large
+        enough to easily resize the window.</dd><dt>Honor User Preferences</dt><dd>If users do not like the default behaviors, they will
+        change them. Do not presume to know what is best for the
+        user. For example, people who use custom button positions
+        do so for a reason, and it will only annoy them to
+        disregard their preference. Those that don't will still
+        expect to see the standard button positions.</dd></dl>
+
+      <h2>Step Two: Infrastructure</h2>
+
+      <p>To start out your project, you'll need a build
+      infrastructure. This will be similar to most KDE
+      applications. Surprisingly, it's an area a lot of people
+      skimp on. The default infrastructure is based on GNU's
+      automake/autoconf framework. There should be very little you
+      need to change from the example code provided.</p>
+
+      <p>There should be an <code>admin</code> directory that
+      contains the standard KDE admin files. A lot of work has been
+      done to make your life as a KDE developer easy, and most of
+      it is in this directory. I have not included this directory
+      in the example package, but you can obtain this from any KDE
+      source package. The best place is to copy it from a current
+      <code>kdesdk</code> package.</p>
+
+      <p>Please include a <code>README</code> and
+      <code>INSTALL</code> file. Describe what this decoration is,
+      and how to install it. And by all means, please state what
+      license your code is under! There's nothing worse than
+      wanting to borrow a piece of code, and not knowing if you're
+      legally entitled to. The preferred location for this
+      information is the <code>COPYING</code> file. The GPL is the
+      most popular for KDE programs, but many decorations are under
+      the MIT license, since that's what KWin itself is under.</p>
+
+      <p>If you're using the example package as a template, you
+      will need to modify the <code>configure.in.in</code>,
+      <code>client/Makefile.am</code>,
+      <code>client/config/Makefile.am</code>, and
+      <code>example.desktop</code> files. Simply replace all
+      occurances of "example" with the name of your decoration. If
+      you add additional source code files, you'll need to change
+      these files as appropriate. Please see the <a href="http://developer.kde.org/documentation/other/developer-faq.html">
+      KDE Developer FAQ</a> for more information on the standard
+      KDE build infrastructure.</p>
+
+      <h2>Step Three: Configuration</h2>
+
+      <p>If there are any user configurable aspects to your
+      decoration, you should create a configuration dialog. The
+      configuration dialog is actually a plugin to Control Center.
+      Common configuration options for KWin decorations include
+      title alignment, title bar height, and displaying an additional
+      handle. For the example, we will be using only one option to
+      specify the title alignment.</p>
+
+      <p>I have chosen to use Qt Designer to handle the layout of
+      the dialog. This makes it very easy to arrange the dialog.
+      Add three QRadio buttons in a QButtonGroup box to let the
+      user choose the alignment of the title text. Add some "What's
+      This" help text. Designer will make all of the widgets public
+      so that you can easily access them from your configuration
+      plugin.</p>
+
+      <p>The <code>exampleconfig.h</code> header file is quite
+      short, and has only two member variables, one for the
+      configuration, and one for the actual dialog:</p>
+<pre>...
+private:
+    KConfig *config_;
+    ConfigDialog *dialog_;
+</pre>
+
+      <p>The <code>exampleconfig.cc</code> is almost as simple.
+      Since most of the GUI work is being done by Qt Designer in
+      our ui file, all we need to do is worry about is the
+      configuration. The constructor creates a new configuration
+      object and dialog, and connects with the dialog.</p>
+<pre>ExampleConfig::ExampleConfig(KConfig* config, QWidget* parent)
+    : QObject(parent), config_(0), dialog_(0)
+{
+    config_ = new KConfig("kwinexamplerc");
+    KGlobal::locale()-&gt;insertCatalogue("kwin_example_config");
+
+    dialog_ = new ConfigDialog(parent);
+    dialog_-&gt;show();
+
+    load(config_);
+
+    connect(dialog_-&gt;titlealign, SIGNAL(clicked(int)),
+            this, SLOT(selectionChanged(int)));
+}
+</pre>
+
+      <p>Our work consists of loading and saving the configuration,
+      and setting some sensible defaults. We simply set the dialog
+      widgets to the existing configuration, and write them out
+      again when they change.</p>
+<pre>void ExampleConfig::load(KConfig*)
+{
+    config_-&gt;setGroup("General");
+    QString value = config_-&gt;readEntry("TitleAlignment", "AlignHCenter");
+    QRadioButton *button = (QRadioButton*)dialog_-&gt;titlealign-&gt;child(value);
+    if (button) button-&gt;setChecked(true);
+}
+
+void ExampleConfig::save(KConfig*)
+{
+    config_-&gt;setGroup("General");
+    QRadioButton *button = (QRadioButton*)dialog_-&gt;titlealign-&gt;selected();
+    if (button) config_-&gt;writeEntry("TitleAlignment", QString(button-&gt;name()));
+    config_-&gt;sync();
+}
+</pre>
+
+      <h2>Step Four: The Factory</h2>
+
+      <p>Each window is known as a "client", and is represented by
+      the ExampleClient class. If you have five windows up on the
+      screen, you will have five instances of ExampleClient.
+      Initializing and managing the decoration for multiple clients
+      is the job of the <em>factory</em>. Every decoration will
+      need a factory class, since this is what KWin uses to create
+      the decoration.</p>
+
+      <p>The decoration factory is often used to store global data
+      needed by the clients. We'll use the ExampleFactory to take
+      care of storing the configuration data. It could also be used
+      to create and store the pixmaps used by the clients.</p>
+<pre>ExampleFactory::ExampleFactory()
+{
+    readConfig();
+    initialized_ = true;
+}
+
+KDecoration* ExampleFactory::createDecoration(KDecorationBridge* b)
+{
+    return new ExampleClient(b, this);
+}
+</pre>
+
+      <p>The factory constructor reads in the configuration and
+      performs any other global initialization for the decoration.
+      KWin will call the <code>createDecoration()</code> method to
+      create the decoration for each client window.</p>
+<pre>bool ExampleFactory::reset(unsigned long changed)
+{
+    initialized_ = false;
+    bool confchange = readConfig();
+    initialized_ = true;
+
+    if (confchange ||
+        (changed &amp; (SettingDecoration | SettingButtons | SettingBorder))) {
+        return true;
+    } else {
+        resetDecorations(changed);
+        return false;
+    }
+}
+</pre>
+
+      <p>We need to reset all the clients whenever the
+      configuration or settings have changed. We first read in our
+      decoration configuration, noting if anything has changed.
+      Then we used the <code>changed</code> parameter to find out
+      if any KWin settings have changed. <code>changed</code> is a
+      bit field that specifies values for
+      <code>SettingDecoration</code>, <code>SettingColors</code>,
+      <code>SettingFont</code>, <code>SettingButtons</code>,
+      <code>SettingTooltips</code>, or
+      <code>SettingBorder</code>.</p>
+
+      <p>If the <code>reset()</code> method returns true if all of
+      the decorations need to be remade, or false if only a repaint
+      is necessary. We do not remake the decorations if only the
+      color, font or tooltip status has changed.</p>
+<pre>bool ExampleFactory::readConfig()
+{
+    KConfig config("kwinexamplerc");
+    config.setGroup("General");
+
+    Qt::AlignmentFlags oldalign = titlealign_;
+    QString value = config.readEntry("TitleAlignment", "AlignHCenter");
+    if (value == "AlignLeft") titlealign_ = Qt::AlignLeft;
+    else if (value == "AlignHCenter") titlealign_ = Qt::AlignHCenter;
+    else if (value == "AlignRight") titlealign_ = Qt::AlignRight;
+
+    if (oldalign == titlealign_) return false;
+    else return true;
+}
+</pre>
+
+      <p>Reading in the configuration is very similar to how we
+      read it in the configuration dialog. By assigning the
+      <code>titlealign_</code> member to the title alignment,
+      clients can determine their title alignment without having to
+      load the configuration. They will do this with
+      ExampleFactory's <code>titleAlign()</code> method.</p>
+
+      <p>Note that we used the <code>oldalign</code> variable to
+      detect any configuration changes. We do not want to
+      unnecessarily remake the decorations if the configuration has
+      not changed.</p>
+
+      <h2>Step Five: The Buttons</h2>
+
+      <p>The buttons on the titlebar are derived from the QButton
+      class, but we still need to determine their look and
+      behavior.</p>
+<pre>ExampleButton::ExampleButton(ExampleClient *parent, const char *name,
+                             const QString&amp; tip, ButtonType type,
+                             const unsigned char *bitmap)
+    : QButton(parent-&gt;widget(), name), client_(parent), type_(type),
+      deco_(0), lastmouse_(0)
+{
+    setBackgroundMode(NoBackground);
+    setFixedSize(BUTTONSIZE, BUTTONSIZE);
+    setCursor(arrowCursor);
+    if (bitmap) setBitmap(bitmap);
+    QToolTip::add(this, tip);
+}
+</pre>
+
+      <p>The constructor sets the size of the button, the cursor
+      that will be shown when the mouse is over the button, and the
+      bitmap decoration. The decoration is what visually
+      distinguishes the buttons from each other. The close button
+      will have an "x" decoration, while the minimize button will
+      have a "v" decoration.</p>
+<pre>void ExampleButton::setBitmap(const unsigned char *bitmap)
+{
+    if (!bitmap) return;
+
+    if (deco_) delete deco_;
+    deco_ = new QBitmap(DECOSIZE, DECOSIZE, bitmap, true);
+    deco_-&gt;setMask(*deco_);
+    repaint(false);
+}
+</pre>
+
+      <p>A QBitmap has only two colors, foreground and background.
+      If we wanted more colors for our decorations we could have
+      used QPixmap instead. We repaint the button every time the
+      bitmap is changed.</p>
+
+      <p>For the menu button we <em>do</em> use a QPixmap. In this
+      case we will use the application icon. We will access this
+      pixmap from the ExampleClient when we draw the button.</p>
+<pre>void ExampleButton::enterEvent(QEvent *e)
+{
+    QButton::enterEvent(e);
+}
+
+void ExampleButton::leaveEvent(QEvent *e)
+{
+    QButton::leaveEvent(e);
+}
+</pre>
+
+      <p>We don't do anything with the enter and leave events
+      except pass them on to the base class. If we wanted to
+      implement "mouse over" highlighting of the buttons, however,
+      this is where we would start.</p>
+<pre>void ExampleButton::mousePressEvent(QMouseEvent* e)
+{
+    lastmouse_ = e-&gt;button();
+    int button = LeftButton;
+    if ((type_ != ButtonMax) &amp;&amp; (e-&gt;button() != LeftButton)) {
+        button = NoButton;
+    }
+    QMouseEvent me(e-&gt;type(), e-&gt;pos(), e-&gt;globalPos(),
+                   button, e-&gt;state());
+    QButton::mousePressEvent(&amp;me);
+}
+
+void ExampleButton::mouseReleaseEvent(QMouseEvent* e)
+{
+    lastmouse_ = e-&gt;button();
+    int button = LeftButton;
+    if ((type_ != ButtonMax) &amp;&amp; (e-&gt;button() != LeftButton)) {
+        button = NoButton;
+    }
+    QMouseEvent me(e-&gt;type(), e-&gt;pos(), e-&gt;globalPos(),
+                   button, e-&gt;state());
+    QButton::mouseReleaseEvent(&amp;me);
+}
+</pre>
+
+      <p>These two events tell us about mouse clicks. These are
+      just the events, and not the signals, so we don't perform any
+      actual windowing behaviors, such as minimize or close. But we
+      do want to remember which mouse button did the clicking. That
+      way if the maximize button was pressed, we will know whether
+      to maximize horizontally, vertically or full.</p>
+
+      <p>Unless it is the maximize button, it is a good idea for the
+      buttons to react to left mouse presses only. Only respond to
+      middle or right clicks if your button makes use of them. In our
+      example, we translate middle and right clicks to "NoButton" if
+      the button is not the maximize button, and pass it on to the base
+      class.</p>
+      
+      <p>Notice that we translate all other clicks to "LeftButton".
+      This is because the base QButton class only responds to left
+      mouse button clicks. We're saving the actual button pressed
+      since our maximize button will have different behaviors
+      depending on which button was pressed.</p>
+
+<pre>void ExampleButton::drawButton(QPainter *painter)
+{
+    if (!ExampleFactory::initialized()) return;
+
+    QColorGroup group;
+    int dx, dy;
+    ...
+</pre>
+
+      <p>The last method to ExampleButton is to draw the button. We
+      return if the factory has not been initialized. This should
+      never happen, but it's better to be safe than to have several
+      hundred bug reports concerning mysterious crashes.</p>
+<pre>    ...
+    group = KDecoration::options()-&gt;colorGroup(KDecoration::ColorButtonBg, client_-&gt;isActive());
+    painter-&gt;fillRect(rect(), group.button());
+    painter-&gt;setPen(group.dark());
+    painter-&gt;drawRect(rect());
+    ...
+</pre>
+
+      <p>There are an infinite number of ways to draw the button.
+      For the purposes of this example, we merely draw a blank
+      button with a dark border around it.</p>
+
+      <p>Notice the call to the <code>KDecoration::options</code>
+      object. KWin keeps track of several configuration items which
+      we can access through the the
+      <code>KDecoration::options</code> class. One of these items
+      is a QColorGroup generated from the user defined button
+      color.</p>
+<pre>    ...
+    if (type_ == ButtonMenu) {
+        dx = (width() - 16) / 2;
+        dy = (height() - 16) / 2;
+        if (isDown()) { dx++; dy++; }
+        painter-&gt;drawPixmap(dx, dy,
+            client_-&gt;icon().pixmap(QIconSet::Small, QIconSet::Normal));
+    } else if (deco_) {
+        dx = (width() - DECOSIZE) / 2;
+        dy = (height() - DECOSIZE) / 2;
+        if (isDown()) { dx++; dy++; }
+        painter-&gt;setPen(group.dark());
+        painter-&gt;drawPixmap(dx, dy, *deco_);
+    }
+}
+</pre>
+
+      <p>Finally we paint the button decoration. We do some minor
+      calculations to center the decoration in the button. If this
+      is the menu button, we draw the application icon. Notice that
+      we get this pixmap from the client. If it's any other button,
+      we draw the bitmap decoration.</p>
+
+      <table summary="sample buttons" width="50%" border="0" cellspacing="0" cellpadding="0">
+        <tbody>
+          <tr>
+            <th align="center">Minimize Button</th>
+
+            <th align="center">Menu Button</th>
+          </tr>
+
+          <tr>
+            <td align="center"><img src="kwintheme_files/minimize.png" width="18" height="18" alt="minimize button"></td>
+
+            <td align="center"><img src="kwintheme_files/menu.png" width="18" height="18" alt="menu button"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>A common effect for buttons is to have make it look
+      "pressed" when the mouse clicks on it, and it's in the "down"
+      state. We do this by shifting the position of the decoration
+      slightly.</p>
+
+      <h2>Step Six: The Client</h2>
+
+      <p>The ExampleClient class is the heart of the decoration. Is
+      provides most of the theming, and contains the application
+      window and the title bar buttons.</p>
+<pre>ExampleClient::ExampleClient(KDecorationBridge *b, KDecorationFactory *f)
+    : KDecoration(b, f) { ; }
+</pre>
+
+      <p>The constructor doesn't do anything. All of the
+      initialization is done in the <code>init()</code> method,
+      which is called by KWin.</p>
+<pre>void ExampleClient::init()
+{
+    createMainWidget(WResizeNoErase | WRepaintNoErase);
+    widget()-&gt;installEventFilter(this);
+    widget()-&gt;setBackgroundMode(NoBackground);
+    ...
+</pre>
+
+      <p>In the initializer we create the main widget of the
+      decoration, passing in a couple of flags to help eliminate
+      some flicker when resizing and repainting windows. This
+      should be the first method called in <code>init()</code>. We
+      also set a NoBackground mode for the same reason. An event
+      filter is set so that we receive important events. More
+      information on this event filter is given below.</p>
+<pre>    ...
+    QGridLayout *mainlayout = new QGridLayout(widget(), 4, 3); // 4x3 grid
+    QHBoxLayout *titlelayout = new QHBoxLayout();
+    titlebar_ = new QSpacerItem(1, TITLESIZE, QSizePolicy::Expanding,
+                                QSizePolicy::Fixed);
+
+    mainlayout-&gt;setResizeMode(QLayout::FreeResize);
+    mainlayout-&gt;addRowSpacing(0, FRAMESIZE);
+    mainlayout-&gt;addRowSpacing(3, FRAMESIZE*2);
+    mainlayout-&gt;addColSpacing(0, FRAMESIZE);
+    mainlayout-&gt;addColSpacing(2, FRAMESIZE);
+    mainlayout-&gt;addLayout(titlelayout, 1, 1);
+    ...
+</pre>
+
+      <p>Qt's layout classes are very flexible and powerful, so we
+      use them to layout our decoration. We create a four row by
+      three column grid. See the "motif" diagram above for a visual
+      explanation.</p>
+
+      <p>The only objects we actually add to the main layout is the
+      <code>titlelayout</code> and window. The outer rows and
+      columns around them are empty spacing. We will later use this
+      spacing to draw the window frame.</p>
+<pre>    if (isPreview()) {
+        mainlayout-&gt;addWidget(
+        new QLabel(i18n("&lt;b&gt;&lt;center&gt;Example preview&lt;/center&gt;&lt;/b&gt;"),
+        widget()), 2, 1);
+    } else {
+        mainlayout-&gt;addItem(new QSpacerItem(0, 0), 2, 1);
+    }
+</pre>
+
+      <p>Normally the center of the layout is a spacer item. The
+      actual client widnow is drawn by KWin on top of the spacer.
+      But when the decoration is previewed in the Control Center,
+      we need to set our own widget for display purposes. In this
+      case we simply make it a label with the name of the
+      decoration.</p>
+      
+<pre>     ...
+    mainlayout-&gt;setRowStretch(2, 10);
+    mainlayout-&gt;setColStretch(1, 10);
+    ...
+</pre>
+
+      <p>It is important to ensure that only the central window
+      changes size when the window is resized. We do this by
+      setting the stretch for the central row and column. Try
+      removing these two lines to see what happens without it. It's
+      not pretty.</p>
+<pre>    ...
+    for (int n=0; n&lt;ButtonTypeCount; n++) button[n] = 0;
+    addButtons(titlelayout, options()-&gt;titleButtonsLeft());
+    titlelayout-&gt;addItem(titlebar_);
+    addButtons(titlelayout, options()-&gt;titleButtonsRight());
+}
+</pre>
+
+      <p>To finish up initialization we layout the titlebar. The
+      <code>options</code> object will tell us the button layout
+      that the user has chosen. This <code>options</code> object is
+      the same as the <code>KDecoration::options</code> object we
+      used earlier in the button class. Both the local and the
+      global static objects are identical. Between the left and the
+      right buttons is the <code>titlebar_</code> spacer we
+      created. This spacer will stretch horizontally as needed, but
+      keep a fixed vertical height.</p>
+
+      <h3>Adding Buttons</h3>
+
+      <p>I have created an <code>addButton()</code> method to ease
+      the creation and layout of the title bar buttons. Most
+      decorations that honor custom button layouts use a similar
+      method. The method is lengthy, but the concept is simple.</p>
+<pre>void ExampleClient::addButtons(QBoxLayout *layout, const QString&amp; s)
+{
+    if (s.length() &gt; 0) {
+        for (unsigned n=0; n &lt; s.length(); n++) {
+            switch (s[n]) {
+              case 'M': // Menu button
+                  if (!button[ButtonMenu]) {
+                      button[ButtonMenu] =
+                          new ExampleButton(this, "menu", i18n("Menu"),
+                                            ButtonMenu, 0);
+                      connect(button[ButtonMenu], SIGNAL(pressed()),
+                              this, SLOT(menuButtonPressed())</pre></div></body></html>
