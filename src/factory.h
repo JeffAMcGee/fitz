@@ -37,11 +37,6 @@ class Factory: public QObject, public KDecorationFactory {
 	
 	const QPixmap* getPixmap(BtnImg::Img i);
 	
-	void updateRegion(const QRect &r);
-	void addBar(Bar* bar);
-	void delBar(Bar* bar);
-  private slots:
-	void cleanRegion();
   private:
 	QRect dirty;
 	QTimer *delay;
@@ -51,7 +46,6 @@ class Factory: public QObject, public KDecorationFactory {
 
 	static bool initialized_;
 	static bool autoMax_;
-	QPtrList<Bar> list;
 	ButtonCache *cache;
 };
 

@@ -26,14 +26,8 @@
 //fitz
 #include "bar.h"
 #include "button.h"
-#include "factory.h"
 
 namespace Fitz {
-
-//convience function
-inline Factory* Bar::factory() {
-	return static_cast<Factory*>(client->factory());
-}
 
 // Constructor
 Bar::Bar(KDecoration *parent, const char *name, bool tl)
@@ -52,15 +46,12 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	for (int n=0; n<BtnType::COUNT; n++) {
 		button[n] = 0;
 	}
-
-	factory()->addBar(this);
 }
 
 Bar::~Bar() {
 	for (int n=0; n<BtnType::COUNT; n++) {
 		if (button[n]) delete button[n];
 	}
-	factory()->delBar(this);
 }
 
 // Add buttons to title layout
@@ -182,7 +173,6 @@ void Bar::prepMask() {
 void Bar::show() {
 	QWidget::show();
 	QRegion geom(client->geometry());
-	//factory()->updateRegion(geom);
 	doMask();
 }
 
@@ -190,31 +180,19 @@ void Bar::show() {
 void Bar::hide() {
 	QWidget::hide();
 	QRegion geom(client->geometry());
-	//factory()->updateRegion(geom);
 	doMask();
 }
 
 //moves the bar to the correct location iff this is a toprlevel widget
 void Bar::reposition() {
 	//kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
-	
+
+	int x=client->width()-width()-1;
+	int y=2;
 	if(toplevel) {
-		//move the bar
-		QRect geom=client->geometry();
-		int x=geom.right()-width();
-		int y=geom.top()+2;
-		move(x,y);
-		
-		//update any other bars that should change
-		/*QRegion parent(geom);
-		QRegion diff=parent.eor(oldParent);
-		factory()->updateRegion(diff);
-		oldParent=parent;*/
-	
-		doMask();
+		move(x-FRAMESIZE,y-FRAMESIZE);
 	} else {
-		int x=client->width()-width()-1;
-		move(x,2);
+		move(x,y);
 	}
 }
 
@@ -229,17 +207,11 @@ void Bar::doMask(bool /*local*/) {
 	QRect cli=client->geometry(); //cli is r t screen
 	geom.moveBy(-cli.left(),-cli.top()); //geom is now r t client->widget()
 
-	QRegion unob(client->unobscuredRegion(QRegion(geom))); //unob is r t client->widget()
-	unob.translate(-geom.left(),-geom.top());//unob is now r t this bar
-	setMask(unob&mask);
+	setMask(mask);
 }
 
 // window active state has changed
 void Bar::activeChange(bool /*active*/) {
-	//in this style, active windows look like inactive windows
-	/*for (int n=0; n<BtnType::COUNT; n++)
-		if (button[n]) button[n]->reset();*/
-	doMask();
 }
 
 // Called when desktop/sticky changes
@@ -249,8 +221,6 @@ void Bar::desktopChange(bool onAllDesktops) {
 		QToolTip::remove(button[BtnType::STICKY]);
 		QToolTip::add(button[BtnType::STICKY], onAllDesktops ? i18n("Un-Sticky") : i18n("Sticky"));
 	}
-	//desk is also show/hide
-	//doMask();
 }
 
 // Maximized state has changed
@@ -267,8 +237,6 @@ void Bar::maximizeChange(bool maximizeMode) {
 		QToolTip::remove(button[BtnType::MAX]);
 		QToolTip::add(button[BtnType::MAX], maximizeMode ? i18n("Restore") : i18n("Maximize"));
 	}
-	//max is also a resize
-	//doMask();
 }
 
 // Max button was pressed

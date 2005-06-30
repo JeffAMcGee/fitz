@@ -26,7 +26,6 @@
 
 namespace Fitz {
 
-const int DELAY_LENGTH=10;
 
 bool Factory::initialized_ = false;
 bool Factory::autoMax_ = false;
@@ -42,7 +41,6 @@ Factory::Factory() {
 	kdDebug()<<"Factory::Factory()"<<endl;
 	readConfig();
 	delay=new QTimer(this,"Bar refresh delay");
-	connect(delay,SIGNAL(timeout()),SLOT(cleanRegion()));
 	initialized_ = true;
 	cache= new ButtonCache();
 	cache->makePixmaps();
@@ -90,31 +88,6 @@ bool Factory::readConfig() {
 
 	return false;
 
-}
-
-void Factory::addBar(Bar* bar) {
-	list.append(bar);
-}
-
-void Factory::delBar(Bar* bar) {
-	list.removeRef(bar);
-}
-
-void Factory::updateRegion(const QRect &r) {
-	//kdDebug()<<"Factory::updateRegion("<<r<<")"<<endl;
-	dirty = dirty.unite(r);
-	unless(delay->isActive())
-		delay->start(DELAY_LENGTH,true);
-}
-
-void Factory::cleanRegion() {
-	//kdDebug()<<"Factory::cleanRegion("<<dirty<<")"<<endl;
-	Bar *bar;
-	for(bar=list.first();bar;bar =list.next()) {
-		unless(dirty.intersect(bar->geometry()).isNull())
-			bar->doMask(false);
-	}
-	dirty=QRect();
 }
 
 const QPixmap* Factory::getPixmap(BtnImg::Img i) {

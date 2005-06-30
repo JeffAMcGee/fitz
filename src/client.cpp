@@ -33,9 +33,20 @@
 //C
 #include <assert.h>
 
+//X11
+#include <X11/Xlib.h>
+
 namespace Fitz {
 
 const int DELAY_LENGTH=200;
+const char *const  fitzLabel =
+"<b><center>Fitz preview</center></b><br />"
+
+"<p><center>Warning: This is an alpha release of Fitz.  It may work poorly "
+"with some programs.  See BUGS for details.</center></p><br />"
+
+"<p><center>If you click on the frame of a maximized window, the mouse will "
+"jump.  You can click this frame for a demonstration.<center></p>";
 
 // Constructor
 Client::Client(KDecorationBridge *b, KDecorationFactory *f) 
@@ -53,50 +64,53 @@ void Client::init() {
 	widget()->setBackgroundMode(NoBackground);
 
 	// setup layout
-	QGridLayout *mainlayout = new QGridLayout(widget(), 3, 3); // 3x3 grid
+	QGridLayout *mainlayout = new QGridLayout(widget(), 4, 3); // 4x3 grid
 
 	mainlayout->setResizeMode(QLayout::FreeResize);
 	mainlayout->addRowSpacing(0, FRAMESIZE);
-	mainlayout->addRowSpacing(2, FRAMESIZE);
+	mainlayout->addRowSpacing(3, FRAMESIZE);
 	mainlayout->addColSpacing(0, FRAMESIZE);
 	mainlayout->addColSpacing(2, FRAMESIZE);
 
 	// the window should stretch
-	mainlayout->setRowStretch(1, 10);
+	mainlayout->setRowStretch(2, 10);
 	mainlayout->setColStretch(1, 10);
 	
-	if (isPreview()) {
-		mainlayout->addWidget(
-				new QLabel(i18n(
-"<b><center>Fitz preview</center></b><br />"
-
-"<p><center>Warning: This is the first release of Fitz.  It may work poorly "
-"with some programs.  See BUGS for details.</center></p><br />"
-
-"<p><center>If you click on the frame of a maximized window, the mouse will "
-"jump.  You can click this frame for a demonstration.<center></p>"),
-			widget()),1,1);
-	} else {
-		mainlayout->addItem(new QSpacerItem(0, 0), 1, 1);
-	}
-
-	//print debug gunk
-	QString btns = options()->titleButtonsLeft()+options()->titleButtonsRight();
 	NET::WindowType type = windowType(
 			NET::NormalMask | NET::DesktopMask | NET::DockMask |
 			NET::ToolbarMask | NET::MenuMask | NET::DialogMask |
 			NET::OverrideMask | NET::TopMenuMask |
 			NET::UtilityMask | NET::SplashMask
-				   );
-	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<" - "<<btns<<endl;
+	);
+	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
+	
+	
+	if (isPreview()) {
+		//preview window
+		mainlayout->addWidget(
+				new QLabel(i18n(fitzLabel),
+				widget()), 2,1
+		);
+		mainlayout->addRowSpacing(1,0);
+		bar=new Bar(this, "preview button bar", false);
+	/*} else if(type != NET::Normal) {{
+		//dialog box
+		mainlayout->addItem(new QSpacerItem(0, 0), 2, 1);
+		mainlayout->addRowSpacing(1,0);
+		bar=new Bar(this, "dialog button bar", false);*/
+	} else {
+		//normal window
+		mainlayout->addRowSpacing(1,0);
+		bar=new Bar(this, "button bar", true);
+	}
 	
 	// setup titlebar buttons
-	bar=new Bar(this,"button bar",!isPreview());
-	bar->addButtons(btns);
+	bar->addButtons(options()->titleButtonsLeft()+options()->titleButtonsRight());
 
-	//maximize the window - eventually this should be optional and off by default see BUGS
+	//maximize the window if appropriate
 	if(Factory::autoMax() && type == NET::Normal)
 		QTimer::singleShot(20,this,SLOT(maximizeFull()));
+	
 }
 
 void Client::maximizeFull() {
@@ -285,7 +299,6 @@ void Client::paintEvent(QPaintEvent* e) {
 	QRect rect = e->rect(); //rect is relative to the widget
 	QRect cli = geometry(); //cli is r t screen
 	rect.moveBy(cli.left(),cli.top()); //geom is now r t screen
-	static_cast<Factory*>(factory())->updateRegion(rect);
 
 	QColorGroup group;
 	QPainter painter(widget());
@@ -328,6 +341,12 @@ void Client::showEvent(QShowEvent *)  {
 	//widget()->repaint();
 	widget()->update();
 	bar->show();
+	reparent();
+}
+
+void Client::reparent() {
+	XReparentWindow(widget()->x11Display(), bar->winId(), windowId(), 0, 0) ;
+	bar->reposition();
 }
 
 void Client::hideEvent(QHideEvent *)  {
