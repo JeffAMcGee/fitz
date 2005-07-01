@@ -84,7 +84,6 @@ void Client::init() {
 	);
 	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
 	
-	
 	if (isPreview()) {
 		//preview window
 		mainlayout->addWidget(
@@ -102,15 +101,32 @@ void Client::init() {
 		//normal window
 		mainlayout->addRowSpacing(1,0);
 		bar=new Bar(this, "button bar", true);
+		QTimer::singleShot(0,this,SLOT(reparentBar()));
 	}
-	
+
 	// setup titlebar buttons
 	bar->addButtons(options()->titleButtonsLeft()+options()->titleButtonsRight());
 
 	//maximize the window if appropriate
 	if(Factory::autoMax() && type == NET::Normal)
-		QTimer::singleShot(20,this,SLOT(maximizeFull()));
+		QTimer::singleShot(0,this,SLOT(maximizeFull()));
+}
+
+void Client::reparentBar() {
+	Display* disp = widget()->x11Display();
+	Window barWin = bar->winId();
+	Window deco = widget()->winId();
+	Window root;
+	Window parent;
+	Window *children;
+	unsigned int num_children;
 	
+	XQueryTree(disp, deco, &root, &parent, &children, &num_children);
+	if (children)
+		XFree(children);
+	
+	XReparentWindow(disp, barWin, parent, 0, 0) ;
+	bar->reposition();
 }
 
 void Client::maximizeFull() {
@@ -341,7 +357,7 @@ void Client::showEvent(QShowEvent *)  {
 	//widget()->repaint();
 	widget()->update();
 	bar->show();
-	reparent();
+	bar->reposition();
 }
 
 void Client::reparent() {

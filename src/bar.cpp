@@ -180,7 +180,7 @@ void Bar::show() {
 void Bar::hide() {
 	QWidget::hide();
 	QRegion geom(client->geometry());
-	doMask();
+	//doMask();
 }
 
 //moves the bar to the correct location iff this is a toprlevel widget
@@ -189,11 +189,7 @@ void Bar::reposition() {
 
 	int x=client->width()-width()-1;
 	int y=2;
-	if(toplevel) {
-		move(x-FRAMESIZE,y-FRAMESIZE);
-	} else {
-		move(x,y);
-	}
+	move(x,y);
 }
 
 //recalculates transparent reigon

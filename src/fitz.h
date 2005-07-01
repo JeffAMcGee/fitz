@@ -32,17 +32,21 @@ namespace BtnImg {
 	/*The order of this enum must match buttons.xpm*/
 	enum Img {
 		MIN=0,
-		HELP,
-		MENU,
-		RESIZE,
 		MAX,
-		STICK,
-		CLOSE,
-		BELOW,
 		RESTORE,
+		VMAX,
+		HELP,
+		STICK,
 		UNSTICK,
+		HMAX,
+		MENU,
+		CLOSE,
 		SHADE,
+		UNABOVE,
+		RESIZE,
+		BELOW,
 		ABOVE,
+		UNBELOW,
 		COUNT
 	};
 }

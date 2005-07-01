@@ -18,7 +18,6 @@
 #include <qtimer.h>
 
 #include "fitz.h"
-#include "bar.h"
 #include "client.h"
 #include "factory.h"
 
@@ -40,7 +39,6 @@ extern "C" KDecorationFactory* create_factory()
 Factory::Factory() {
 	kdDebug()<<"Factory::Factory()"<<endl;
 	readConfig();
-	delay=new QTimer(this,"Bar refresh delay");
 	initialized_ = true;
 	cache= new ButtonCache();
 	cache->makePixmaps();

@@ -38,9 +38,6 @@ class Factory: public QObject, public KDecorationFactory {
 	const QPixmap* getPixmap(BtnImg::Img i);
 	
   private:
-	QRect dirty;
-	QTimer *delay;
-	
 	bool readConfig();
 	friend bool fitzFactoryInitialized();
 

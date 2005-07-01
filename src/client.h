@@ -40,8 +40,10 @@ class Client : public KDecoration {
 	virtual QSize minimumSize() const;
 	virtual Position mousePosition(const QPoint &point) const;
 
+	
   private slots:
 	virtual void maximizeFull();
+	virtual void reparentBar();
 
   private:
 	bool eventFilter(QObject *obj, QEvent *e);
