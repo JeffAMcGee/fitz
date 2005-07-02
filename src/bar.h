@@ -38,27 +38,23 @@ class Bar : public QWidget {
 	void addButtons(const QString& buttons);
 
 	void reposition();
-	void doMask(bool local=true);
 	void paintEvent(QPaintEvent *e);
-  public slots:
+  /*public slots:
 	virtual void show ();
-	virtual void hide ();
+	virtual void hide ();*/
 	
   private slots:
 	void maxButtonPressed();
 	void menuButtonPressed();
-	void aboveButtonPressed();
-	void belowButtonPressed();
-	void shadeButtonPressed();
-	void resizeButtonPressed();
 
   private:
 	Factory* factory();
 
 	void addButton(BtnType::Type b, const char *name,
-			BtnImg::Img i, const char* signal,
-			QObject *recv, const char* slot);
-	void prepMask();
+			const char* signal, QObject *recv, const char* slot);
+	void addButton(BtnType::Type b, const char *name, bool on,
+			const char* slot);
+	void doMask();
 	
 	Button *button[BtnType::COUNT];
 	KDecoration *client;
@@ -66,7 +62,6 @@ class Bar : public QWidget {
 	QRegion oldParent;
 	bool toplevel;
 	int btnswidth;
-	QRegion mask;
 };
 
 } // namespace Fitz

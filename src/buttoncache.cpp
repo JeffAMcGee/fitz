@@ -24,6 +24,26 @@
 
 namespace Fitz {
 
+/*The order of this enum must match BtnType.  The numbers come from buttons.xpm*/
+int btnsLookup[][4] = {
+	{4}, //HELP
+	{1,3,7,2}, //MAX
+	{0}, //MIN
+	{9}, //CLOSE
+	{8}, //MENU
+	{5,6}, //STICKY
+	{10,1}, //SHADE
+	{14,11}, //ABOVE
+	{13,15}, //BELOW
+	{12}, //RESIZE
+};
+
+//this is not used for anything
+char btnsLabel[][9] = {
+	"Help", "Maximize", "Minimize", "Close", "Menu", "Sticky", "Shade",
+	"Above", "Below", "Resize"
+};
+
 ButtonCache::ButtonCache() : pixmapsMade(false) {
 }
 
@@ -44,7 +64,7 @@ void ButtonCache::makePixmaps(){
 	btnsPic.convertFromImage(greyBtns);//convert to pixmap
 
 	//split to pixmaps
-	for(int i=0;i<BtnImg::COUNT;i++) {
+	for(int i=0;i<IMG_COUNT;i++) {
 		btns[i].resize(BTN_WIDTH,BTN_HEIGHT);
 		bitBlt(
 			&(btns[i]), 0,0,
@@ -54,8 +74,9 @@ void ButtonCache::makePixmaps(){
 	pixmapsMade=true;
 }
 
-const QPixmap* ButtonCache::getPixmap(BtnImg::Img i) {
+const QPixmap* ButtonCache::getPixmap(BtnType::Type type, int state) {
 	unless(pixmapsMade) makePixmaps();
+	int i = btnsLookup[type][state];
 	return &(btns[i]);
 }
 

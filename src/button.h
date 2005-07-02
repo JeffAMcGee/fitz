@@ -22,16 +22,20 @@ class KDecoration;
 namespace Fitz {
 
 class Button : public QButton {
+	Q_OBJECT
 public:
-	Button(QWidget *parent, const char *name, const QString& tip,
-			KDecoration* c, BtnType::Type type, BtnImg::Img bitmap);
+	Button(QWidget *parent, const char *name,
+			KDecoration* c, BtnType::Type type);
 	~Button();
 
-	void setPixmap(BtnImg::Img i);
 	QSize sizeHint() const;
 	int lastMousePress() const;
 	void reset();
-
+public slots:
+	void setPixmap(int i);
+	void toggle();
+signals:
+	void toggled(bool on);
 private:
 	void enterEvent(QEvent *e);
 	void leaveEvent(QEvent *e);
@@ -44,6 +48,7 @@ private:
 	const QPixmap *deco;
 	int lastmouse;
 	KDecoration *client;
+	int state;
 };
 
 inline int Button::lastMousePress() const

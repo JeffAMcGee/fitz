@@ -11,6 +11,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 //kde
+#include <klocale.h>
 #include <kdecoration.h>
 #include <kdebug.h>
 
@@ -30,25 +31,31 @@ namespace Fitz {
 
 // Constructor
 Button::Button(QWidget *parent, const char *name,
-		const QString& tip, KDecoration* c, BtnType::Type t,
-		BtnImg::Img bitmap)
+		KDecoration* c, BtnType::Type t)
 	: QButton(parent, name), type(t),
-		deco(0), lastmouse(0), client(c)
+		deco(0), lastmouse(0), client(c), state(0)
 {
 	setBackgroundMode(NoBackground);
 	setFixedSize(BTN_WIDTH, BTN_HEIGHT);
 	setCursor(arrowCursor);
-	setPixmap(bitmap);
-	QToolTip::add(this, tip);
+	setPixmap(0);
+	QToolTip::add(this, i18n(name));
 }
 
 Button::~Button() {
 }
 
+void Button::toggle() {
+	state=!state;
+	setPixmap(state);
+	emit toggled(state);
+}
+
 // Set the button decoration
-void Button::setPixmap(BtnImg::Img i) {
+void Button::setPixmap(int i) {
 	Factory *f=static_cast<Factory*>(client->factory());
-	deco=f->getPixmap(i);
+	deco=f->getPixmap(type,i);
+	state=i;
 	repaint(false);
 }
 
@@ -114,4 +121,4 @@ void Button::drawButton(QPainter *painter) {
 
 }
 
-//#include "button.moc"
+#include "button.moc"

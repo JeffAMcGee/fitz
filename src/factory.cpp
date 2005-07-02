@@ -88,8 +88,8 @@ bool Factory::readConfig() {
 
 }
 
-const QPixmap* Factory::getPixmap(BtnImg::Img i) {
-	return cache->getPixmap(i);
+const QPixmap* Factory::getPixmap(BtnType::Type t, int i) {
+	return cache->getPixmap(t,i);
 }
 
 bool fitzFactoryInitialized() {

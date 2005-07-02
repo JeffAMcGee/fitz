@@ -105,7 +105,7 @@ void Client::init() {
 	}
 
 	// setup titlebar buttons
-	bar->addButtons(options()->titleButtonsLeft()+options()->titleButtonsRight());
+	bar->addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
 
 	//maximize the window if appropriate
 	if(Factory::autoMax() && type == NET::Normal)
@@ -161,8 +161,8 @@ void Client::maximizeChange() {
 
 // The window has been shaded or unshaded
 void Client::shadeChange() {
-	//kdDebug()<<" Client::shadeChange() : window shading does not work yet"<<endl;
-	if(isShade()) setShade(false);
+	kdDebug()<<" Client::shadeChange() : window shading does not work yet"<<endl;
+	//if(isShade()) setShade(false);
 }
 
 // Get the size of the borders
@@ -223,9 +223,6 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 	  case QEvent::Show:
 		showEvent(static_cast<QShowEvent *>(e));
 		return true;
-	  case QEvent::Hide:
-		hideEvent(static_cast<QHideEvent *>(e));
-		return false;
 		
 	  default:
 		  return false;
@@ -344,7 +341,6 @@ void Client::paintEvent(QPaintEvent* e) {
 
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
-	//BAR::DO_MASK kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
 	if (widget()->isShown()) {
 		widget()->erase(widget()->rect());
 	}
@@ -353,7 +349,6 @@ void Client::resizeEvent(QResizeEvent *)  {
 
 // Window is being shown
 void Client::showEvent(QShowEvent *)  {
-	//BAR::DO_MASK kdDebug()<<"Client::ShowEvent() : "<<caption()<<endl;
 	//widget()->repaint();
 	widget()->update();
 	bar->show();
@@ -365,10 +360,10 @@ void Client::reparent() {
 	bar->reposition();
 }
 
-void Client::hideEvent(QHideEvent *)  {
+/*void Client::hideEvent(QHideEvent *)  {
 	//BAR::DO_MASK kdDebug()<<"Client::HideEvent() : "<<caption()<<endl;
 	bar->hide();
-}
+}*/
 
 }
 

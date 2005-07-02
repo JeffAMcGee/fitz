@@ -28,29 +28,6 @@ enum {
 
 bool fitzFactoryInitialized();
 
-namespace BtnImg {
-	/*The order of this enum must match buttons.xpm*/
-	enum Img {
-		MIN=0,
-		MAX,
-		RESTORE,
-		VMAX,
-		HELP,
-		STICK,
-		UNSTICK,
-		HMAX,
-		MENU,
-		CLOSE,
-		SHADE,
-		UNABOVE,
-		RESIZE,
-		BELOW,
-		ABOVE,
-		UNBELOW,
-		COUNT
-	};
-}
-
 namespace BtnType {
 	enum Type {
 		HELP=0,
@@ -66,6 +43,7 @@ namespace BtnType {
 		COUNT
 	};
 }
+
 
 } // namespace Fitz
 

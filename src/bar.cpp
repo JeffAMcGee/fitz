@@ -60,65 +60,69 @@ void Bar::addButtons(const QString& s) {
 	box->addSpacing(SLANT_WIDTH);
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
-		  case 'M': // Menu button
-			addButton(BtnType::MENU, "Menu", BtnImg::MENU,
-					SIGNAL(pressed()), this, SLOT(menuButtonPressed()));
-			break;
 
-		  case 'S': // Sticky button
-			  addButton(BtnType::STICKY,"Sticky",
-				    client->isOnAllDesktops() ? BtnImg::STICK:BtnImg::UNSTICK,
-					SIGNAL(clicked()), client, SLOT(toggleOnAllDesktops()));
+	// Buttons
+		  case 'M': // Menu button
+			addButton(BtnType::MENU, "Menu",
+					SIGNAL(pressed()), this, SLOT(menuButtonPressed()));
 			break;
 
 		  case 'H': // Help button
 			if(client->providesContextHelp())
-				addButton(BtnType::HELP, "Help", BtnImg::HELP,
-						SIGNAL(clicked()), client, SLOT(showContextHelp()));
+				addButton(BtnType::HELP, "Help",
+					SIGNAL(clicked()), client, SLOT(showContextHelp()));
 			break;
 
 		  case 'I': // Minimize button
-			addButton(BtnType::MIN, "Minimize", BtnImg::MIN,
+			addButton(BtnType::MIN, "Minimize",
 					SIGNAL(clicked()), client, SLOT(minimize()));
 			break;
 
 		  case 'A': // Maximize button
-			BtnImg::Img i;
-			if(client->maximizeMode()==KDecorationDefines::MaximizeFull)
-				i=BtnImg::RESTORE;
-			else
-				i=BtnImg::MAX;
-
-			addButton(BtnType::MAX, "Maximize", i,
+			addButton(BtnType::MAX, "Maximize",
 					SIGNAL(clicked()), this, SLOT(maxButtonPressed()));
+			//set the pixmap to the correct mode
+			button[BtnType::MAX]->setPixmap(client->maximizeMode());
 			break;
 
 		  case 'X': // Close button
-			addButton(BtnType::CLOSE, "Close", BtnImg::CLOSE,
+			addButton(BtnType::CLOSE, "Close",
 					SIGNAL(clicked()), client, SLOT(closeWindow()));
 			break;
 
-		  case 'F': // Keep Above button
-			addButton(BtnType::ABOVE, "Above", BtnImg::ABOVE,
-					SIGNAL(clicked()), this, SLOT(aboveButtonPressed()));
-			break;
-
-		  case 'B': // Keep Below button
-			addButton(BtnType::BELOW, "Below", BtnImg::BELOW,
-					SIGNAL(clicked()), this, SLOT(belowButtonPressed()));
-			break;
-
-		  case 'L': // Shade button
-			addButton(BtnType::SHADE, "Shade", BtnImg::SHADE,
-					SIGNAL(clicked()), this, SLOT(shadeButtonPressed()));
-			break;
-
 		  case 'R': // Resize button
-			addButton(BtnType::RESIZE, "Resize", BtnImg::RESIZE,
+			addButton(BtnType::RESIZE, "Resize",
 					SIGNAL(clicked()), this, SLOT(resizeButtonPressed()));
 			break;
 
-		case '_': // Spacer item
+	// Buttons that can be toggled
+		  case 'S': // Sticky button
+			addButton(BtnType::STICKY, "Sticky", client->isOnAllDesktops(),
+					SLOT(toggleOnAllDesktops())); 
+			break;
+
+		  case 'F': // Keep Above button
+			addButton(BtnType::ABOVE, "Above", client->keepAbove(),
+					SLOT(setKeepAbove(bool)));
+			break;
+
+		  case 'B': // Keep Below button
+			addButton(BtnType::BELOW, "Below", client->keepBelow(),
+					SLOT(setKeepBelow(bool)));
+			break;
+
+		  case 'L': // Shade button
+			addButton(BtnType::SHADE, "Shade", client->isSetShade(),
+					SLOT(setShade(bool)));
+			break;
+
+	// Things that aren't buttons
+		  case '_': // Spacer item
+			box->addSpacing(SPACERSIZE);
+			btnswidth+=SPACERSIZE;
+			break;
+
+		  case ' ': // Title bar
 			box->addSpacing(SPACERSIZE);
 			btnswidth+=SPACERSIZE;
 			break;
@@ -132,24 +136,34 @@ void Bar::addButtons(const QString& s) {
 			btnswidth+SLANT_WIDTH,
 			BTN_HEIGHT*2+2
 	);
-	prepMask();
+	doMask();
 }
 
-// Add a button to title layout (called by addButtons() )
+// Add a generic button to title layout (called by addButtons() )
 void Bar::addButton(BtnType::Type b, const char *name,
-		BtnImg::Img img, const char* signal, QObject *recv,
-		const char* slot)
+		const char* signal, QObject *recv, const char* slot)
 {
 	unless(button[b]) {
-		button[b] = new Button(this, name, i18n(name), client, b, img);
+		button[b] = new Button(this, name, client, b);
 		connect(button[b], signal, recv, slot);
 		box->addWidget (button[b],0,Qt::AlignTop);
 	}
 	btnswidth+=BTN_WIDTH;
 }
 
-void Bar::prepMask() {
-	mask=QRegion();//clear the mask
+// This adds a button that can be toggled ( it is also called by addButtons() )
+void Bar::addButton(BtnType::Type b, const char *name, bool on,
+		const char* slot)
+{
+	addButton(b,name,SIGNAL(toggled(bool)),client,slot);
+	button[b]->setPixmap(on);
+	connect(button[b],SIGNAL(clicked()),button[b],SLOT(toggle()));
+}
+
+void Bar::doMask() {
+	unless(toplevel) return;
+	
+	QRegion mask;
 
 	//add the boxes
 	mask+=QRegion(0, 0, FRAMESIZE+1, FRAMESIZE);
@@ -167,20 +181,8 @@ void Bar::prepMask() {
 	mask+=r;
 	r.translate(btnswidth-FRAMESIZE+1,BTN_HEIGHT+2-FRAMESIZE);
 	mask+=r;
-}
 
-//show bar and coverup other bars
-void Bar::show() {
-	QWidget::show();
-	QRegion geom(client->geometry());
-	doMask();
-}
-
-//hide bar and show other bars
-void Bar::hide() {
-	QWidget::hide();
-	QRegion geom(client->geometry());
-	//doMask();
+	setMask(mask);
 }
 
 //moves the bar to the correct location iff this is a toprlevel widget
@@ -192,20 +194,6 @@ void Bar::reposition() {
 	move(x,y);
 }
 
-//recalculates transparent reigon
-void Bar::doMask(bool /*local*/) {
-	//kdDebug()<<"        Bar::doMask() : "<<client->caption()<<endl;
-	unless(toplevel) return;
-
-	//"r t" stands for relative to as in foo is relative to the top-left corner of baz
-
-	QRect geom = geometry(); //geom is relative to screen
-	QRect cli=client->geometry(); //cli is r t screen
-	geom.moveBy(-cli.left(),-cli.top()); //geom is now r t client->widget()
-
-	setMask(mask);
-}
-
 // window active state has changed
 void Bar::activeChange(bool /*active*/) {
 }
@@ -213,7 +201,7 @@ void Bar::activeChange(bool /*active*/) {
 // Called when desktop/sticky changes
 void Bar::desktopChange(bool onAllDesktops) {
 	if (button[BtnType::STICKY]) {
-		button[BtnType::STICKY]->setPixmap(onAllDesktops ? BtnImg::STICK : BtnImg::UNSTICK);
+		button[BtnType::STICKY]->setPixmap(onAllDesktops);
 		QToolTip::remove(button[BtnType::STICKY]);
 		QToolTip::add(button[BtnType::STICKY], onAllDesktops ? i18n("Un-Sticky") : i18n("Sticky"));
 	}
@@ -223,12 +211,7 @@ void Bar::desktopChange(bool onAllDesktops) {
 void Bar::maximizeChange(bool maximizeMode) {
 	if (button[BtnType::MAX]) {
 		//set the image
-		BtnImg::Img i;
-		if(client->maximizeMode()==KDecorationDefines::MaximizeFull)
-			i=BtnImg::RESTORE;
-		else
-			i=BtnImg::MAX;
-		button[BtnType::MAX]->setPixmap(i);
+		button[BtnType::MAX]->setPixmap(client->maximizeMode());
 		
 		QToolTip::remove(button[BtnType::MAX]);
 		QToolTip::add(button[BtnType::MAX], maximizeMode ? i18n("Restore") : i18n("Maximize"));
@@ -265,24 +248,6 @@ void Bar::menuButtonPressed() {
 		unless(f->exists(client)) return; // decoration was destroyed
 		button[BtnType::MENU]->setDown(false);
 	}
-}
-
-void Bar::aboveButtonPressed() {
-	client->setKeepAbove( ! client->keepAbove());
-}
-
-void Bar::belowButtonPressed() {
-	client->setKeepBelow( ! client->keepBelow());
-}
-
-void Bar::shadeButtonPressed() {
-	/*shade just doesn't make sense for this decoration; so I lower the window instead */
-	//client->setShade( ! client->isShade());
-	client->performWindowOperation(KDecoration::LowerOp);
-}
-
-void Bar::resizeButtonPressed() {
-	client->performWindowOperation(KDecoration::ResizeOp);
 }
 
 void Bar::paintEvent(QPaintEvent*) {
