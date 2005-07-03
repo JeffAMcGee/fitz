@@ -32,6 +32,7 @@ class Factory: public QObject, public KDecorationFactory {
 	virtual ~Factory();
 	virtual KDecoration *createDecoration(KDecorationBridge *b);
 	virtual bool reset(unsigned long changed);
+	virtual bool supports( Ability ability );
 
 	static bool autoMax();
 	

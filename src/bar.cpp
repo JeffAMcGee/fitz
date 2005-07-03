@@ -19,6 +19,7 @@
 //qt
 #include <qlabel.h>
 #include <qlayout.h>
+#include <qfont.h>
 #include <qbitmap.h>
 #include <qpainter.h>
 #include <qtooltip.h>
@@ -32,7 +33,7 @@ namespace Fitz {
 // Constructor
 Bar::Bar(KDecoration *parent, const char *name, bool tl)
 		: QWidget (parent->widget(), name, tl?(WType_TopLevel | WX11BypassWM):0),
-		client(parent), oldParent(), toplevel(tl)
+		client(parent), toplevel(tl), corners(6)
 {
 	// for flicker-free redraws
 	if(toplevel)
@@ -46,18 +47,23 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	for (int n=0; n<BtnType::COUNT; n++) {
 		button[n] = 0;
 	}
+	slantWidth = (BTN_HEIGHT-FRAMESIZE+4)/2;
+	titleSpace = new QSpacerItem(BTN_WIDTH,BTN_HEIGHT);
+	titleBar = new QPixmap;
 }
 
 Bar::~Bar() {
 	for (int n=0; n<BtnType::COUNT; n++) {
 		if (button[n]) delete button[n];
 	}
+	//delete titleBar;
 }
 
 // Add buttons to title layout
 void Bar::addButtons(const QString& s) {
-	btnswidth=0;
-	box->addSpacing(SLANT_WIDTH);
+	kdDebug()<<"Bar::addButtons()"<<endl;
+	btnsWidth=0;
+	box->addSpacing(slantWidth);
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
 
@@ -119,12 +125,12 @@ void Bar::addButtons(const QString& s) {
 	// Things that aren't buttons
 		  case '_': // Spacer item
 			box->addSpacing(SPACERSIZE);
-			btnswidth+=SPACERSIZE;
+			btnsWidth+=SPACERSIZE;
 			break;
 
 		  case ' ': // Title bar
-			box->addSpacing(SPACERSIZE);
-			btnswidth+=SPACERSIZE;
+			box->addItem(titleSpace);
+			captionChange(client->caption());
 			break;
 
 		  default:
@@ -132,11 +138,7 @@ void Bar::addButtons(const QString& s) {
 			break;
 		}
 	}
-	setFixedSize(
-			btnswidth+SLANT_WIDTH,
-			BTN_HEIGHT*2+2
-	);
-	doMask();
+	calcSize();
 }
 
 // Add a generic button to title layout (called by addButtons() )
@@ -148,7 +150,7 @@ void Bar::addButton(BtnType::Type b, const char *name,
 		connect(button[b], signal, recv, slot);
 		box->addWidget (button[b],0,Qt::AlignTop);
 	}
-	btnswidth+=BTN_WIDTH;
+	btnsWidth+=BTN_WIDTH;
 }
 
 // This adds a button that can be toggled ( it is also called by addButtons() )
@@ -160,37 +162,36 @@ void Bar::addButton(BtnType::Type b, const char *name, bool on,
 	connect(button[b],SIGNAL(clicked()),button[b],SLOT(toggle()));
 }
 
-void Bar::doMask() {
-	unless(toplevel) return;
-	
-	QRegion mask;
-
-	//add the boxes
-	mask+=QRegion(0, 0, FRAMESIZE+1, FRAMESIZE);
-	mask+=QRegion(FRAMESIZE+1, 0, btnswidth, BTN_HEIGHT+2);
-	mask+=QRegion(width()-FRAMESIZE, BTN_HEIGHT+2, FRAMESIZE, BTN_HEIGHT-2);
-
-	//add the corners
-	#include "barcorner.xbm"
-	QBitmap corner(
-			bar_corner_xbm_width,bar_corner_xbm_height,
-			bar_corner_xbm, true
+void Bar::calcSize() {
+	setFixedSize(
+			btnsWidth+slantWidth,
+			BTN_HEIGHT+2+slantWidth*2
 	);
-	QRegion r(corner);
-	r.translate(1,FRAMESIZE);
-	mask+=r;
-	r.translate(btnswidth-FRAMESIZE+1,BTN_HEIGHT+2-FRAMESIZE);
-	mask+=r;
+	
+	int frameX = width()-FRAMESIZE+2;
+	int barY = BTN_HEIGHT+2;
+	
+	corners.putPoints(
+		0, 6,
+		0, 0,
+		0, FRAMESIZE-1,
+		slantWidth, barY,
+		frameX-slantWidth-1, barY,
+		frameX, barY+slantWidth*2+2,
+		frameX,0
+	);
 
-	setMask(mask);
+	setMask(QRegion(corners));
 }
 
-//moves the bar to the correct location iff this is a toprlevel widget
+//moves the bar to the correct location iff this is a toplevel widget
 void Bar::reposition() {
 	//kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
 
 	int x=client->width()-width()-1;
 	int y=2;
+	if(FRAMESIZE>2)
+		y=1;
 	move(x,y);
 }
 
@@ -215,6 +216,48 @@ void Bar::maximizeChange(bool maximizeMode) {
 		
 		QToolTip::remove(button[BtnType::MAX]);
 		QToolTip::add(button[BtnType::MAX], maximizeMode ? i18n("Restore") : i18n("Maximize"));
+	}
+}
+
+// window active state has changed
+void Bar::captionChange(const QString& caption) {
+	//make the string shorter - remove everything after " - "
+	QString file(caption);
+	file.truncate(file.find(" - "));
+	kdDebug()<<"Bar::caption("<<file<<")"<<endl;
+
+	//change the font
+	QFont font = client->options()->font();
+	font.setPixelSize(BTN_HEIGHT-1);
+	font.setItalic(false);
+	font.setWeight(QFont::DemiBold);
+	font.setStretch(130);
+	
+	//figure out the width
+	QFontMetrics fm(font);
+	int width = fm.width(file) + BTN_WIDTH/2;
+	int oldWidth = titleBar->width();
+	btnsWidth+=width-oldWidth;
+	titleBar->resize(width,BTN_HEIGHT);
+	
+	//read in colors
+	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
+	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
+	
+	
+	//make the bitmap for the caption
+	QPainter p;
+	p.begin(titleBar);
+	p.setPen(fg);
+	p.setFont(font);
+	p.fillRect(0,0,width,BTN_HEIGHT,bg);
+	p.shear(0,.5);
+	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
+	p.end();
+	
+	if(oldWidth) {
+		calcSize();
+		reposition();
 	}
 }
 
@@ -251,50 +294,31 @@ void Bar::menuButtonPressed() {
 }
 
 void Bar::paintEvent(QPaintEvent*) {
+	kdDebug()<<"Bar::paintEvent()"<<endl;
 	unless(fitzFactoryInitialized()) return;
 
+	QPointArray line;
+	line.putPoints(0,4,corners,1);
+	line.translate(0,-1);
+
+	QPointArray fill(6);
+	fill.putPoints(1,4,corners,1);
+	fill.translate(0,-2);
+	fill.setPoint(0,0,0);
+	fill.setPoint(5,width()-FRAMESIZE+2,0);
+	
 	QColorGroup group;
-	QPainter painter(this);
-	
 	group = client->options()->colorGroup(KDecoration::ColorTitleBar, true);
-
 	
-	QPoint a(0,FRAMESIZE-2);
-	QPoint b(btnswidth-2,BTN_HEIGHT+2);
-	
-	//draw the two triangles
-	for(int y=0;y<(BTN_HEIGHT-FRAMESIZE+4);y++) {
-		int x=y/2;
-		painter.setPen(group.dark());
-		painter.drawPoint(a+QPoint(x, y));
-		painter.drawPoint(b+QPoint(x, y));
-		painter.setPen(group.background());
-		painter.drawLine(a+QPoint(x+1,y) , a+QPoint(SLANT_WIDTH,y));
-		painter.drawLine(b+QPoint(x+1,y) , b+QPoint(SLANT_WIDTH+1,y));
-	}
-
-	//draw the part of the frame below the buttons
+	QPainter painter(this);
 	painter.setPen(group.background());
-	painter.drawLine(
-			SLANT_WIDTH,BTN_HEIGHT,
-			width(),BTN_HEIGHT
-			);
-	painter.drawLine(
-			btnswidth-2,BTN_HEIGHT+1,
-			width(),BTN_HEIGHT+1
-			);
+	painter.setBrush(group.background());
+	painter.drawPolygon(fill);
 	painter.setPen(group.dark());
-	painter.drawLine(
-			SLANT_WIDTH,BTN_HEIGHT+1,
-			btnswidth-3,BTN_HEIGHT+1
-	);/* I have no idea why that is (btnswidth-3) as
-	opposed to btnswidth, but that magic constant works.*/
-	painter.fillRect(
-			0,0,
-			SLANT_WIDTH,FRAMESIZE-2,
-			group.background()
-	);
+	painter.drawPolyline(line);
 	
+	QPoint origin = titleSpace->geometry().topLeft();
+	painter.drawPixmap(origin,*titleBar);
 }
 
 }

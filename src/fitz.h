@@ -22,8 +22,7 @@ enum {
 	BTN_HEIGHT=12,
 	BTN_WIDTH=24,
 	FRAMESIZE = 4,
-	SPACERSIZE = 4,
-	SLANT_WIDTH = (BTN_HEIGHT+FRAMESIZE-4)/2
+	SPACERSIZE = BTN_WIDTH
 };
 
 bool fitzFactoryInitialized();

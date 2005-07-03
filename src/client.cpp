@@ -151,8 +151,9 @@ void Client::iconChange()
 { ; }
 
 // The title has changed, but there is no title
-void Client::captionChange()
-{ ; }
+void Client::captionChange() {
+	bar->captionChange(caption());
+}
 
 // Maximized state has changed
 void Client::maximizeChange() {
@@ -270,17 +271,17 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 		bool willMove=false;
 
 		if(x<FRAMESIZE) { //left
-			 x=FRAMESIZE+8;
+			 x=FRAMESIZE+6;
 			 willMove=true;
 		}  else if((w-x)<=FRAMESIZE) {//right
-			x=w-FRAMESIZE-8;
+			x=w-FRAMESIZE-6;
 			willMove=true;
 		}
 		if(y<FRAMESIZE) { //top
-			y=FRAMESIZE+8;
+			y=FRAMESIZE+6;
 			willMove=true;
 		} else if((h-y)<=FRAMESIZE) {//bottom
-			y=h-FRAMESIZE-8;
+			y=h-FRAMESIZE-6;
 			willMove=true;
 		}
 	

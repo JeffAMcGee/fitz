@@ -88,6 +88,26 @@ bool Factory::readConfig() {
 
 }
 
+bool Factory::supports( Ability ability ) {
+	switch(ability) {
+	  case AbilityAnnounceButtons:
+	  case AbilityButtonMenu:
+	  case AbilityButtonOnAllDesktops:
+	  case AbilityButtonSpacer:
+	  case AbilityButtonHelp:
+	  case AbilityButtonMinimize:
+	  case AbilityButtonMaximize:
+	  case AbilityButtonClose:
+	  case AbilityButtonAboveOthers:
+	  case AbilityButtonBelowOthers:
+	  case AbilityButtonShade:
+	  case AbilityButtonResize:
+		return true;
+	  default:
+		return false;
+	}
+}
+
 const QPixmap* Factory::getPixmap(BtnType::Type t, int i) {
 	return cache->getPixmap(t,i);
 }

@@ -19,6 +19,8 @@
 
 class KDecoration;
 class QBoxLayout;
+class QSpacerItem;
+class QPixmap;
 
 namespace Fitz {
 
@@ -34,14 +36,12 @@ class Bar : public QWidget {
 	void activeChange(bool active);
 	void desktopChange(bool onAllDesktops);
 	void maximizeChange(bool maximizeMode);
+	void captionChange(const QString& caption);
 
 	void addButtons(const QString& buttons);
 
 	void reposition();
 	void paintEvent(QPaintEvent *e);
-  /*public slots:
-	virtual void show ();
-	virtual void hide ();*/
 	
   private slots:
 	void maxButtonPressed();
@@ -54,14 +54,17 @@ class Bar : public QWidget {
 			const char* signal, QObject *recv, const char* slot);
 	void addButton(BtnType::Type b, const char *name, bool on,
 			const char* slot);
-	void doMask();
+	void calcSize();
 	
 	Button *button[BtnType::COUNT];
 	KDecoration *client;
 	QBoxLayout *box;
-	QRegion oldParent;
 	bool toplevel;
-	int btnswidth;
+	int btnsWidth;
+	int slantWidth;
+	QPointArray corners;
+	QSpacerItem *titleSpace;
+	QPixmap *titleBar;
 };
 
 } // namespace Fitz
