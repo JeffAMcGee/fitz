@@ -173,7 +173,6 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	//BAR::DO_MASK kdDebug()<<"Client::resize() : "<<caption()<<endl;
 	widget()->resize(size);
 }
 
@@ -186,15 +185,23 @@ QSize Client::minimumSize() const {
 KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	const int corner = 32;
 	Position pos = PositionCenter;
+	
+	kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
 
-	if (point.x() <= corner)
+	int x = point.x();
+	int y = point.y();
+	
+	if(bar->geometry().contains(point))
+		return PositionCenter;
+	
+	if (x <= corner)
 		pos = PositionLeft;
-	else if (point.x() >= (width()-corner))
+	else if (x >= (width()-corner))
 		pos = PositionRight;
 
-	if (point.y() <= corner)
+	if (y <= corner)
 		 pos = static_cast<Position>(pos | PositionTop);
-	else if (point.y() >= (height()-corner))
+	else if (y >= (height()-corner))
 		pos = static_cast<Position>(pos | PositionBottom);
 
 	return pos;
@@ -212,6 +219,13 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 	  case QEvent::MouseButtonRelease:
 		mouseReleaseEvent(static_cast<QMouseEvent *>(e));
 		return true;
+	  case QEvent::MouseButtonDblClick:
+		mouseDoubleClickEvent( static_cast< QMouseEvent* >( e ));
+		return true;
+	  case QEvent::Wheel:
+		wheelEvent( static_cast< QWheelEvent* >( e ));
+		return true;
+		
 	  case QEvent::Leave:
 		mouseLeaveEvent(static_cast<QMouseEvent *>(e));
 		return true;
@@ -226,7 +240,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return true;
 		
 	  default:
-		  return false;
+		return false;
 	}
 
 	return false;
@@ -235,7 +249,11 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 // Deal with mouse click
 void Client::mousePressEvent(QMouseEvent *e) {
 	//kdDebug()<<"Client::mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
-	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton)) {
+	if(
+		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
+		! bar->geometry().contains(e->pos())
+	) {
+		//this is a left mous button press that is not inside the button bar
 		assert(event == 0);
 		event=new QMouseEvent(
 				e->type(), e->pos(),
@@ -304,6 +322,19 @@ void Client::mouseLeaveEvent(QMouseEvent *) {
 		delete event;
 		event=0;
 	}
+}
+
+void Client::wheelEvent(QWheelEvent *e) {
+#if KDE_IS_VERSION( 3, 4, 89 )
+	titlebarMouseWheelOperation( e->delta());
+#endif	
+}
+
+void Client::mouseDoubleClickEvent(QMouseEvent *e) {
+	if(e->button() != Qt::LeftButton)
+		return;
+	if(e->pos().y() < bar->height())
+		titlebarDblClickOperation();
 }
 
 // Repaint the window

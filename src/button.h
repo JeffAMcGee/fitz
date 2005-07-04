@@ -33,6 +33,7 @@ public:
 	void reset();
 public slots:
 	void setPixmap(int i);
+	void setPixmap(bool b);
 	void toggle();
 signals:
 	void toggled(bool on);

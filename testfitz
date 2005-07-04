@@ -1,0 +1,5 @@
+#!/bin/sh
+make install
+killall kwin
+exec kwin --replace
+#kcontrol

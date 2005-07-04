@@ -44,11 +44,12 @@ class Bar : public QWidget {
 	void paintEvent(QPaintEvent *e);
 	
   private slots:
-	void maxButtonPressed();
-	void menuButtonPressed();
+	virtual void maxButtonPressed();
+	virtual void menuButtonPressed();
 
   private:
 	Factory* factory();
+	bool eventFilter(QObject *obj, QEvent *e);
 
 	void addButton(BtnType::Type b, const char *name,
 			const char* signal, QObject *recv, const char* slot);

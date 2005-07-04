@@ -23,6 +23,7 @@
 #include <qbitmap.h>
 #include <qpainter.h>
 #include <qtooltip.h>
+#include <qapplication.h>
 
 //fitz
 #include "bar.h"
@@ -50,6 +51,10 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	slantWidth = (BTN_HEIGHT-FRAMESIZE+4)/2;
 	titleSpace = new QSpacerItem(BTN_WIDTH,BTN_HEIGHT);
 	titleBar = new QPixmap;
+	
+	setMouseTracking(true);
+	installEventFilter(this);
+	
 }
 
 Bar::~Bar() {
@@ -110,11 +115,15 @@ void Bar::addButtons(const QString& s) {
 		  case 'F': // Keep Above button
 			addButton(BtnType::ABOVE, "Above", client->keepAbove(),
 					SLOT(setKeepAbove(bool)));
+			connect(client,SIGNAL(keepAboveChanged(bool)),
+					button[BtnType::ABOVE],SLOT(setPixmap(bool)));
 			break;
 
 		  case 'B': // Keep Below button
 			addButton(BtnType::BELOW, "Below", client->keepBelow(),
 					SLOT(setKeepBelow(bool)));
+			connect(client,SIGNAL(keepBelowChanged(bool)),
+					button[BtnType::BELOW],SLOT(setPixmap(bool)));
 			break;
 
 		  case 'L': // Shade button
@@ -194,6 +203,51 @@ void Bar::reposition() {
 		y=1;
 	move(x,y);
 }
+
+// Event filter
+bool Bar::eventFilter(QObject *obj, QEvent *e) {
+	if (obj != this) return false;
+	//kdDebug()<<"Bar::eventFilter("<<e->type()<<") : "<<client->caption()<<endl;
+	QMouseEvent *me;
+	QWheelEvent *we;
+	QEvent *event;
+	
+	switch (e->type()) {
+	  case QEvent::MouseButtonPress:
+	  case QEvent::MouseButtonRelease:
+	  case QEvent::Leave:
+	  case QEvent::Enter:
+	  case QEvent::MouseMove:
+	  case QEvent::MouseButtonDblClick:
+		me = static_cast<QMouseEvent *>(e);
+		
+		//move the posiiton of the event so that it is relative to
+		//client->widget()
+		event = new QMouseEvent(
+			me->type(), me->pos() + pos(),
+			me->globalPos(), me->button(), me->state()
+		);
+		break;
+		
+	  case QEvent::Wheel:
+		we = static_cast< QWheelEvent* >( e );
+		
+		//move the posiiton of the event so that it is relative to
+		//client->widget()
+		event = new QWheelEvent(
+			we->pos() + pos(), we->globalPos(), we->delta(), we->state(),
+			we->orientation()
+		);
+		//QWheelEvent ( const QPoint & pos, const QPoint & globalPos, int delta, int state, Orientation orient = Vertical )
+		break;
+			
+	  default:
+		return false;
+	}
+	QApplication::postEvent(client->widget(),event);
+	return true;
+}
+
 
 // window active state has changed
 void Bar::activeChange(bool /*active*/) {

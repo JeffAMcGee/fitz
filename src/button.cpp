@@ -51,6 +51,10 @@ void Button::toggle() {
 	emit toggled(state);
 }
 
+void Button::setPixmap(bool b) {
+	setPixmap(int(b));
+}
+
 // Set the button decoration
 void Button::setPixmap(int i) {
 	Factory *f=static_cast<Factory*>(client->factory());

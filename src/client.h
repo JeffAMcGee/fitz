@@ -47,16 +47,20 @@ class Client : public KDecoration {
 
   private:
 	bool eventFilter(QObject *obj, QEvent *e);
-	void moveEvent(QMoveEvent *);
+
 	void mousePressEvent(QMouseEvent *);
 	void mouseReleaseEvent(QMouseEvent *);
 	void mouseLeaveEvent(QMouseEvent *);
+	void mouseDoubleClickEvent(QMouseEvent *e);
+	void wheelEvent(QWheelEvent *e);
+
+	void moveEvent(QMoveEvent *);
 	void paintEvent(QPaintEvent *e);
 	void resizeEvent(QResizeEvent *);
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
 	void reparent();
-
+	
 	QMouseEvent *event;
 	Bar *bar;
 	QRect oldGeom;
