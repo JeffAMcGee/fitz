@@ -1,0 +1,74 @@
+#!/usr/bin/make -C /var/deb/release-fitz/ -f 
+#this script dowloads fitz from cvs, makes a tarball for release, and then
+#tests it
+
+#The chance that this script works on someone else's computer is negligible.
+#You're going to need to edit it some.
+
+pkg:="fitz-0.2"
+tbz:="$(pkg).tar.bz2"
+unexport UNSERMAKE
+
+all: clean co release
+
+co: 
+	#download and clean fitz
+	cvs -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz login
+	cvs -z3 -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz co -P fitz
+	mv fitz $(pkg)
+	cd $(pkg) && make -f Makefile.cvs
+	cd $(pkg) && rm -rf supermake kwintheme.html supermake release Makefile.cvs release
+
+
+tar: |co
+	#make the tarball
+	tar -cjf $(tbz) $(pkg)
+	md5sum $(tbz) > $(tbz).md5
+	rm -rf $(pkg)
+
+
+release: deb tar
+	#upload it
+	#ncftpput -p \"\" upload.sourceforge.net /incoming $(pkg).tar.bz2
+	#ncftpput -p \"\" upload.sourceforge.net /incoming $(pkg).tar.bz2
+
+	#print instructions
+	@echo "> md5sum $(tbz)"
+	@cat $(tbz).md5
+	@echo <<EOF
+	> tar -xjf $(tbz)
+	> cd $(pkg)
+	> ./configure
+	> make
+	> sudo make install
+	EOF
+
+deb: co
+	echo sudo mount --bind /var/make/
+	echo sudo chroot /var/deb/ 
+	cat <<EOF
+	cd /release-fitz
+	
+	EOF
+
+test: tar
+	#test build
+	tar -xjf $(tbz)
+	cd $(pkg)
+	./configure
+	make
+
+	#get rid of the old fitz
+	killall kwin
+	kdekillall kwin
+	rm -rf /home/jeff/fitz/kde
+	rm $KDEHOME/share/config/kwinfitzrc
+	
+	#test it
+	make install
+	kwin --replace
+
+clean:
+	rm -rf release-fitz
+	mkdir release-fitz
+

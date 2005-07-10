@@ -1,0 +1,19 @@
+Source: fitz
+Section: kde
+Priority: optional
+Maintainer: Jeff McGee (user) <JeffAMcGee@gmail.com>
+Build-Depends: debhelper (>= 4.0.0)
+Depends: kwin (>= 3.2.0)
+Standards-Version: 3.6.1
+
+Package: fitz
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A KDE window decoration without a traditional titlebar.
+  Unlike other decorations, Fitz does not have titlebars; instead, it puts the
+  buttons on the top right corner of the window in the menubar. As a result,
+  when a window is at the top edge of the screen, the menubar is only a few
+  pixels away from the top. Fitz lets you get to a menu item by ramming your
+  mouse into the top of the screen. If you click on the window frame, the mouse
+  will jump down into the middle of the menubar and Fitz will generate a click.
+  This effectively puts the menubar at the top of the screen like Mac OS does.
