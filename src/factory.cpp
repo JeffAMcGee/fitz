@@ -89,7 +89,7 @@ bool Factory::readConfig() {
 }
 
 bool Factory::supports( Ability ability ) {
-#if KDE_IS_VERSION( 3, 3, 0 )
+#if KDE_IS_VERSION( 3, 4, 0 )
 	switch(ability) {
 	  case AbilityAnnounceButtons:
 	  case AbilityButtonMenu:
