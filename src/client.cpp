@@ -387,11 +387,6 @@ void Client::showEvent(QShowEvent *)  {
 	bar->reposition();
 }
 
-void Client::reparent() {
-	XReparentWindow(widget()->x11Display(), bar->winId(), windowId(), 0, 0) ;
-	bar->reposition();
-}
-
 /*void Client::hideEvent(QHideEvent *)  {
 	//BAR::DO_MASK kdDebug()<<"Client::HideEvent() : "<<caption()<<endl;
 	bar->hide();

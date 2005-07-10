@@ -89,6 +89,7 @@ bool Factory::readConfig() {
 }
 
 bool Factory::supports( Ability ability ) {
+#if KDE_IS_VERSION( 3, 3, 0 )
 	switch(ability) {
 	  case AbilityAnnounceButtons:
 	  case AbilityButtonMenu:
@@ -106,6 +107,7 @@ bool Factory::supports( Ability ability ) {
 	  default:
 		return false;
 	}
+#endif	
 }
 
 const QPixmap* Factory::getPixmap(BtnType::Type t, int i) {

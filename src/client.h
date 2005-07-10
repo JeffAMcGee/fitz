@@ -59,7 +59,6 @@ class Client : public KDecoration {
 	void resizeEvent(QResizeEvent *);
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
-	void reparent();
 	
 	QMouseEvent *event;
 	Bar *bar;
