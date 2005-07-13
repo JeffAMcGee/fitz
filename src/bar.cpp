@@ -29,12 +29,15 @@
 #include "bar.h"
 #include "button.h"
 
+//X11
+#include <X11/Xlib.h>
+
 namespace Fitz {
 
 // Constructor
 Bar::Bar(KDecoration *parent, const char *name, bool tl)
 		: QWidget (parent->widget(), name, tl?(WType_TopLevel | WX11BypassWM):0),
-		client(parent), toplevel(tl), corners(6)
+		client(parent), reparented(0), toplevel(tl), corners(6)
 {
 	// for flicker-free redraws
 	if(toplevel)
@@ -55,6 +58,7 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	setMouseTracking(true);
 	installEventFilter(this);
 	
+	setMask(QRegion());
 }
 
 Bar::~Bar() {
@@ -147,7 +151,7 @@ void Bar::addButtons(const QString& s) {
 			break;
 		}
 	}
-	calcSize();
+	resize();
 }
 
 // Add a generic button to title layout (called by addButtons() )
@@ -171,7 +175,7 @@ void Bar::addButton(BtnType::Type b, const char *name, bool on,
 	connect(button[b],SIGNAL(clicked()),button[b],SLOT(toggle()));
 }
 
-void Bar::calcSize() {
+void Bar::resize() {
 	setFixedSize(
 			btnsWidth+slantWidth,
 			BTN_HEIGHT+2+slantWidth*2
@@ -190,7 +194,10 @@ void Bar::calcSize() {
 		frameX,0
 	);
 
-	setMask(QRegion(corners));
+	reposition();
+
+	if(reparented)
+		setMask(QRegion(corners));
 }
 
 //moves the bar to the correct location iff this is a toplevel widget
@@ -202,6 +209,26 @@ void Bar::reposition() {
 	if(FRAMESIZE>2)
 		y=1;
 	move(x,y);
+}
+
+//this function finds the parent window of the window decoration widget and
+//makes the bar a child of that window
+void Bar::reparent() {
+	Display* disp = x11Display();
+	Window barWin = winId();
+	Window deco = client->widget()->winId();
+	Window root;
+	Window parent;
+	Window *children;
+	unsigned int num_children;
+	
+	XQueryTree(disp, deco, &root, &parent, &children, &num_children);
+	if (children)
+		XFree(children);
+	
+	XReparentWindow(disp, barWin, parent, 0, 0);
+	reparented = true;
+	resize();
 }
 
 // Event filter
@@ -310,8 +337,7 @@ void Bar::captionChange(const QString& caption) {
 	p.end();
 	
 	if(oldWidth) {
-		calcSize();
-		reposition();
+		resize();
 	}
 }
 

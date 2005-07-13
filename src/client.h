@@ -43,7 +43,6 @@ class Client : public KDecoration {
 	
   private slots:
 	virtual void maximizeFull();
-	virtual void reparentBar();
 
   private:
 	bool eventFilter(QObject *obj, QEvent *e);

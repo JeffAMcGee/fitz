@@ -43,6 +43,9 @@ class Bar : public QWidget {
 	void reposition();
 	void paintEvent(QPaintEvent *e);
 	
+  public slots:
+	virtual void reparent();
+	
   private slots:
 	virtual void maxButtonPressed();
 	virtual void menuButtonPressed();
@@ -55,11 +58,12 @@ class Bar : public QWidget {
 			const char* signal, QObject *recv, const char* slot);
 	void addButton(BtnType::Type b, const char *name, bool on,
 			const char* slot);
-	void calcSize();
+	void resize();
 	
 	Button *button[BtnType::COUNT];
 	KDecoration *client;
 	QBoxLayout *box;
+	bool reparented;
 	bool toplevel;
 	int btnsWidth;
 	int slantWidth;
