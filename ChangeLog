@@ -1,0 +1,15 @@
+2005-07-11  Jeff McGee <JeffAMcGee@gmail.com>
+
+	* added title -- whoop!
+	* made above, below, and others toglleable (It's a word now.)
+	* made buttons based on svg
+	* cleaned up the bar code
+	* moved to XReparentWindow()
+
+2005-01-13  Jeff McGee <JeffAMcGee@gmail.com>
+
+	* made auto-maximize optional and less aggressive
+
+2005-01-12  Jeff McGee <JeffAMcGee@gmail.com>
+
+	* initial release
