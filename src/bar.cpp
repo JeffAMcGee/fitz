@@ -3,7 +3,7 @@
 // -------------------
 // Fitz window decoration for KDE
 // -------------------
-// Copyright (c) 2003-2005 by Jeffrey McGee <jeffreym@cs.tamu.edu>
+// Copyright (c) 2003-2005 by Jeffrey McGee <JeffAMcGee@gmail.com>
 // Portions Copyright (c) 2003 by David Johnson <david@usermode.org>
 // 
 // You can Freely distribute this program under the GNU General Public
@@ -176,6 +176,7 @@ void Bar::addButton(BtnType::Type b, const char *name, bool on,
 }
 
 void Bar::resize() {
+	kdDebug()<<"Bar::resize() : "<<client->caption()<<endl;
 	setFixedSize(
 			btnsWidth+slantWidth,
 			BTN_HEIGHT+2+slantWidth*2
@@ -202,13 +203,14 @@ void Bar::resize() {
 
 //moves the bar to the correct location iff this is a toplevel widget
 void Bar::reposition() {
-	//kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
-
+	kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
+	
 	int x=client->width()-width()-1;
 	int y=2;
 	if(FRAMESIZE>2)
 		y=1;
 	move(x,y);
+	mask()
 }
 
 //this function finds the parent window of the window decoration widget and
