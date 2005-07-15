@@ -70,7 +70,7 @@ Bar::~Bar() {
 
 // Add buttons to title layout
 void Bar::addButtons(const QString& s) {
-	kdDebug()<<"Bar::addButtons()"<<endl;
+	//kdDebug()<<"Bar::addButtons()"<<endl;
 	btnsWidth=0;
 	box->addSpacing(slantWidth);
 	for (unsigned i=0; i < s.length(); i++) {
@@ -176,7 +176,7 @@ void Bar::addButton(BtnType::Type b, const char *name, bool on,
 }
 
 void Bar::resize() {
-	kdDebug()<<"Bar::resize() : "<<client->caption()<<endl;
+	//kdDebug()<<"Bar::resize() : "<<client->caption()<<endl;
 	setFixedSize(
 			btnsWidth+slantWidth,
 			BTN_HEIGHT+2+slantWidth*2
@@ -187,9 +187,9 @@ void Bar::resize() {
 	
 	corners.putPoints(
 		0, 6,
-		0, 0,
-		0, FRAMESIZE-1,
-		slantWidth, barY,
+		-1, 0,
+		-1, FRAMESIZE-1,
+		slantWidth-1, barY,
 		frameX-slantWidth-1, barY,
 		frameX, barY+slantWidth*2+2,
 		frameX,0
@@ -203,14 +203,13 @@ void Bar::resize() {
 
 //moves the bar to the correct location iff this is a toplevel widget
 void Bar::reposition() {
-	kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
+	//kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
 	
 	int x=client->width()-width()-1;
 	int y=2;
 	if(FRAMESIZE>2)
 		y=1;
 	move(x,y);
-	mask()
 }
 
 //this function finds the parent window of the window decoration widget and
@@ -307,7 +306,7 @@ void Bar::captionChange(const QString& caption) {
 	//make the string shorter - remove everything after " - "
 	QString file(caption);
 	file.truncate(file.find(" - "));
-	kdDebug()<<"Bar::caption("<<file<<")"<<endl;
+	//kdDebug()<<"Bar::caption("<<file<<")"<<endl;
 
 	//change the font
 	QFont font = client->options()->font();
@@ -376,7 +375,7 @@ void Bar::menuButtonPressed() {
 }
 
 void Bar::paintEvent(QPaintEvent*) {
-	kdDebug()<<"Bar::paintEvent()"<<endl;
+	//kdDebug()<<"Bar::paintEvent()"<<endl;
 	unless(fitzFactoryInitialized()) return;
 
 	QPointArray line;

@@ -166,7 +166,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	const int corner = 32;
 	Position pos = PositionCenter;
 	
-	kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
+	//kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
 
 	int x = point.x();
 	int y = point.y();
@@ -366,11 +366,6 @@ void Client::showEvent(QShowEvent *)  {
 	bar->show();
 	bar->reposition();
 }
-
-/*void Client::hideEvent(QHideEvent *)  {
-	//BAR::DO_MASK kdDebug()<<"Client::HideEvent() : "<<caption()<<endl;
-	bar->hide();
-}*/
 
 }
 
