@@ -33,3 +33,9 @@ On two occasions during the past few weeks my mouse suddenly stopped working.
 Moving worked, but clicking didn't.  Stoping X and then starting it again did
 not fix the problem, so I don't see how Fitz could have don that, but I'm not
 completely sure.
+
+/*============================================================================*/
+open gvim
+cd fitz/src
+:e .
+the title bar goes to the wrong place

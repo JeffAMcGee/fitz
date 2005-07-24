@@ -39,8 +39,8 @@ const int DELAY_LENGTH=200;
 const char *const  fitzLabel =
 "<b><center>Fitz preview</center></b><br />"
 
-"<p><center>Warning: This is an alpha release of Fitz.  It may work poorly "
-"with some programs.  See BUGS for details.</center></p><br />"
+"<p><center>Warning: Fitz may work poorly with some programs.  See BUGS for "
+"details.</center></p><br />"
 
 "<p><center>If you click on the frame of a maximized window, the mouse will "
 "jump.  You can click this frame for a demonstration.<center></p>";

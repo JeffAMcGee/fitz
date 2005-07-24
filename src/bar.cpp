@@ -58,7 +58,10 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	setMouseTracking(true);
 	installEventFilter(this);
 	
-	setMask(QRegion());
+	if(toplevel)
+		setMask(QRegion());
+	else
+		reparented=true;
 }
 
 Bar::~Bar() {
@@ -177,8 +180,10 @@ void Bar::addButton(BtnType::Type b, const char *name, bool on,
 
 void Bar::resize() {
 	//kdDebug()<<"Bar::resize() : "<<client->caption()<<endl;
+	
+	//Welcome to the land of magic constants.  I hope you enjoy your stay.
 	setFixedSize(
-			btnsWidth+slantWidth,
+			btnsWidth+slantWidth-1,
 			BTN_HEIGHT+2+slantWidth*2
 	);
 	
@@ -187,9 +192,9 @@ void Bar::resize() {
 	
 	corners.putPoints(
 		0, 6,
-		-1, 0,
-		-1, FRAMESIZE-1,
-		slantWidth-1, barY,
+		0, 0,
+		0, FRAMESIZE-2,
+		slantWidth, barY,
 		frameX-slantWidth-1, barY,
 		frameX, barY+slantWidth*2+2,
 		frameX,0
@@ -201,13 +206,13 @@ void Bar::resize() {
 		setMask(QRegion(corners));
 }
 
-//moves the bar to the correct location iff this is a toplevel widget
+//moves the bar to the correct location
 void Bar::reposition() {
 	//kdDebug()<<"Bar::reposition("<<client->geometry()<<") : "<<client->caption()<<endl;
 	
 	int x=client->width()-width()-1;
 	int y=2;
-	if(FRAMESIZE>2)
+	if(FRAMESIZE<=2)
 		y=1;
 	move(x,y);
 }
@@ -215,6 +220,7 @@ void Bar::reposition() {
 //this function finds the parent window of the window decoration widget and
 //makes the bar a child of that window
 void Bar::reparent() {
+
 	Display* disp = x11Display();
 	Window barWin = winId();
 	Window deco = client->widget()->winId();
@@ -377,7 +383,7 @@ void Bar::menuButtonPressed() {
 void Bar::paintEvent(QPaintEvent*) {
 	//kdDebug()<<"Bar::paintEvent()"<<endl;
 	unless(fitzFactoryInitialized()) return;
-
+	
 	QPointArray line;
 	line.putPoints(0,4,corners,1);
 	line.translate(0,-1);

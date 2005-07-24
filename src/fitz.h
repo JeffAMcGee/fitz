@@ -15,9 +15,6 @@
 
 namespace Fitz {
 
-class FitzClient;
-class FItzBar;
-
 enum {
 	BTN_HEIGHT=12,
 	BTN_WIDTH=24,
