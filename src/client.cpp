@@ -64,10 +64,10 @@ void Client::init() {
 	QGridLayout *mainlayout = new QGridLayout(widget(), 4, 3); // 4x3 grid
 
 	mainlayout->setResizeMode(QLayout::FreeResize);
-	mainlayout->addRowSpacing(0, FRAMESIZE);
-	mainlayout->addRowSpacing(3, FRAMESIZE);
-	mainlayout->addColSpacing(0, FRAMESIZE);
-	mainlayout->addColSpacing(2, FRAMESIZE);
+	mainlayout->addRowSpacing(0, framesize_);
+	mainlayout->addRowSpacing(3, framesize_);
+	mainlayout->addColSpacing(0, framesize_);
+	mainlayout->addColSpacing(2, framesize_);
 
 	// the window should stretch
 	mainlayout->setRowStretch(2, 10);
@@ -130,8 +130,9 @@ void Client::desktopChange() {
 void Client::iconChange()
 { ; }
 
-// The title has changed, but there is no title
+// The title has changed
 void Client::captionChange() {
+	//kdDebug()<<" Client::captionChange()"<<endl;
 	bar->captionChange(caption());
 }
 
@@ -148,7 +149,9 @@ void Client::shadeChange() {
 
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
-	l = r = t = b = FRAMESIZE;
+	l = r = t = b = framesize_;
+	if(isShade())
+		t=BTN_HEIGHT+framesize_;
 }
 
 // Called to resize or move the window
@@ -158,7 +161,7 @@ void Client::resize(const QSize &size) {
 
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
-	return QSize(bar->width()+FRAMESIZE*2+20, FRAMESIZE*2+20);
+	return QSize(bar->width()+framesize_*2+20, framesize_*2+20);
 }
 
 // Return logical mouse position
@@ -268,18 +271,18 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 		}
 		bool willMove=false;
 
-		if(x<FRAMESIZE) { //left
-			 x=FRAMESIZE+6;
+		if(x<framesize_) { //left
+			 x=framesize_+6;
 			 willMove=true;
-		}  else if((w-x)<=FRAMESIZE) {//right
-			x=w-FRAMESIZE-6;
+		}  else if((w-x)<=framesize_) {//right
+			x=w-framesize_-6;
 			willMove=true;
 		}
-		if(y<FRAMESIZE) { //top
-			y=FRAMESIZE+6;
+		if(y<framesize_) { //top
+			y=framesize_+6;
 			willMove=true;
-		} else if((h-y)<=FRAMESIZE) {//bottom
-			y=h-FRAMESIZE-6;
+		} else if((h-y)<=framesize_) {//bottom
+			y=h-framesize_-6;
 			willMove=true;
 		}
 	
@@ -329,25 +332,29 @@ void Client::paintEvent(QPaintEvent* e) {
 	QPainter painter(widget());
 
 	// draw frame
+	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
+	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
+	
 	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
 
-	QRect frame(0, 0, width(), FRAMESIZE);
-	painter.fillRect(frame, group.background());
-	frame.setRect(0, 0, FRAMESIZE, height());
-	painter.fillRect(frame, group.background());
-	frame.setRect(0, height() - FRAMESIZE, width(), FRAMESIZE);
-	painter.fillRect(frame, group.background());
-	frame.setRect(width()-FRAMESIZE, 0, FRAMESIZE, height());
-	painter.fillRect(frame, group.background());
+	QRect frame(0, 0, width(), framesize_);
+	painter.fillRect(frame, bg);
+	frame.setRect(0, 0, framesize_, height());
+	painter.fillRect(frame, bg);
+	frame.setRect(0, height() - framesize_, width(), framesize_);
+	painter.fillRect(frame, bg);
+	frame.setRect(width()-framesize_, 0, framesize_, height());
+	painter.fillRect(frame, bg);
 
 	// outline the frame
-	painter.setPen(group.dark());
 	frame = widget()->rect();
 
+	painter.setPen(bg.dark(150));
 	painter.drawRect(frame);
-	frame.setRect(frame.x() + FRAMESIZE-1, frame.y() + FRAMESIZE-1,
-			width() - FRAMESIZE*2 +2,
-			frame.height() - FRAMESIZE*2 +2);
+	frame.setRect(frame.x() + framesize_-1, frame.y() + framesize_-1,
+			width() - framesize_*2 +2,
+			frame.height() - framesize_*2 +2);
+	painter.setPen(bg.dark(130));
 	painter.drawRect(frame);
 }
 
@@ -361,7 +368,6 @@ void Client::resizeEvent(QResizeEvent *)  {
 
 // Window is being shown
 void Client::showEvent(QShowEvent *)  {
-	//widget()->repaint();
 	widget()->update();
 	bar->show();
 	bar->reposition();

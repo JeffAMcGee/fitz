@@ -51,8 +51,8 @@ Bar::Bar(KDecoration *parent, const char *name, bool tl)
 	for (int n=0; n<BtnType::COUNT; n++) {
 		button[n] = 0;
 	}
-	slantWidth = (BTN_HEIGHT-FRAMESIZE+4)/2;
-	titleSpace = new QSpacerItem(BTN_WIDTH,BTN_HEIGHT);
+	slantWidth = (BTN_HEIGHT-framesize_+4)/2;
+	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
 	titleBar = new QPixmap;
 	
 	setMouseTracking(true);
@@ -187,13 +187,13 @@ void Bar::resize() {
 			BTN_HEIGHT+2+slantWidth*2
 	);
 	
-	int frameX = width()-FRAMESIZE+2;
+	int frameX = width()-framesize_+2;
 	int barY = BTN_HEIGHT+2;
 	
 	corners.putPoints(
 		0, 6,
 		0, 0,
-		0, FRAMESIZE-2,
+		0, framesize_-2,
 		slantWidth, barY,
 		frameX-slantWidth-1, barY,
 		frameX, barY+slantWidth*2+2,
@@ -212,7 +212,7 @@ void Bar::reposition() {
 	
 	int x=client->width()-width()-1;
 	int y=2;
-	if(FRAMESIZE<=2)
+	if(framesize_<=2)
 		y=1;
 	move(x,y);
 }
@@ -312,7 +312,7 @@ void Bar::captionChange(const QString& caption) {
 	//make the string shorter - remove everything after " - "
 	QString file(caption);
 	file.truncate(file.find(" - "));
-	//kdDebug()<<"Bar::caption("<<file<<")"<<endl;
+	kdDebug()<<"Bar::caption("<<file<<")"<<endl;
 
 	//change the font
 	QFont font = client->options()->font();
@@ -328,10 +328,13 @@ void Bar::captionChange(const QString& caption) {
 	btnsWidth+=width-oldWidth;
 	titleBar->resize(width,BTN_HEIGHT);
 	
+	//force repaint even if resize was a nop
+	if(width==oldWidth)
+		update();
+	
 	//read in colors
 	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
 	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
-	
 	
 	//make the bitmap for the caption
 	QPainter p;
@@ -339,7 +342,7 @@ void Bar::captionChange(const QString& caption) {
 	p.setPen(fg);
 	p.setFont(font);
 	p.fillRect(0,0,width,BTN_HEIGHT,bg);
-	p.shear(0,.5);
+	//p.shear(0,.5);
 	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
 	p.end();
 	
@@ -380,6 +383,10 @@ void Bar::menuButtonPressed() {
 	}
 }
 
+void Bar::resizeButtonPressed() {
+	client->performWindowOperation(KDecoration::ResizeOp);
+}
+
 void Bar::paintEvent(QPaintEvent*) {
 	//kdDebug()<<"Bar::paintEvent()"<<endl;
 	unless(fitzFactoryInitialized()) return;
@@ -392,7 +399,7 @@ void Bar::paintEvent(QPaintEvent*) {
 	fill.putPoints(1,4,corners,1);
 	fill.translate(0,-2);
 	fill.setPoint(0,0,0);
-	fill.setPoint(5,width()-FRAMESIZE+2,0);
+	fill.setPoint(5,width()-framesize_+2,0);
 	
 	QColorGroup group;
 	group = client->options()->colorGroup(KDecoration::ColorTitleBar, true);
@@ -401,7 +408,7 @@ void Bar::paintEvent(QPaintEvent*) {
 	painter.setPen(group.background());
 	painter.setBrush(group.background());
 	painter.drawPolygon(fill);
-	painter.setPen(group.dark());
+	painter.setPen(group.background().dark(130));
 	painter.drawPolyline(line);
 	
 	QPoint origin = titleSpace->geometry().topLeft();

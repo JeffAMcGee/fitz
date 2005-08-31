@@ -28,6 +28,7 @@ namespace Fitz {
 
 bool Factory::initialized_ = false;
 bool Factory::autoMax_ = false;
+int framesize_ = 3;
 
 extern "C" KDecorationFactory* create_factory()
 {

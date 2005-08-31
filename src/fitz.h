@@ -18,7 +18,6 @@ namespace Fitz {
 enum {
 	BTN_HEIGHT=12,
 	BTN_WIDTH=24,
-	FRAMESIZE = 4,
 	SPACERSIZE = BTN_WIDTH
 };
 
@@ -40,6 +39,8 @@ namespace BtnType {
 	};
 }
 
+//temporary global variable
+extern int framesize_;
 
 } // namespace Fitz
 

@@ -49,6 +49,7 @@ class Bar : public QWidget {
   private slots:
 	virtual void maxButtonPressed();
 	virtual void menuButtonPressed();
+	virtual void resizeButtonPressed();
 
   private:
 	Factory* factory();

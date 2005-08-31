@@ -40,7 +40,7 @@ class Client : public KDecoration {
 	virtual QSize minimumSize() const;
 	virtual Position mousePosition(const QPoint &point) const;
 
-	
+	static int framesize();
   private slots:
 	virtual void maximizeFull();
 
