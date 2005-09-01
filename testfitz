@@ -1,4 +1,5 @@
 #!/bin/sh
+export KDEDIRS="/home/jeff/fitz/kde:${KDEDIRS}"
 make install
 killall kwin
 exec kwin --replace

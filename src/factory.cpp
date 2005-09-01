@@ -28,7 +28,6 @@ namespace Fitz {
 
 bool Factory::initialized_ = false;
 bool Factory::autoMax_ = false;
-int framesize_ = 3;
 
 extern "C" KDecorationFactory* create_factory()
 {
@@ -65,7 +64,10 @@ bool Factory::reset(unsigned long changed) {
 	initialized_ = true;
 
 	if(changed & SettingColors)
-		  cache->makePixmaps();
+		cache->makePixmaps();
+
+	if(changed & SettingBorder)
+		Client::setBorderSize(options()->preferredBorderSize(this));
 	
 	if (confchange ||
 		(changed & (SettingDecoration | SettingButtons | SettingBorder))
@@ -84,9 +86,16 @@ bool Factory::readConfig() {
 	config.setGroup("General");
 
 	autoMax_ = config.readBoolEntry("autoMax", false);
+	Client::setBorderSize(options()->preferredBorderSize(this));
 
 	return false;
+}
 
+QValueList< KDecoration::BorderSize > Factory::borderSizes() const {
+	kdDebug()<<"Factory::borderSizes()"<<endl;
+	return QValueList< BorderSize >() 
+		<< BorderTiny << BorderNormal
+		<< BorderLarge << BorderVeryLarge;
 }
 
 bool Factory::supports( Ability ability ) {

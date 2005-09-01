@@ -13,11 +13,14 @@
 //kde
 #include <klocale.h>
 #include <kdebug.h>
+#include <kdecorationfactory.h>
 
 //qt
 #include <qlabel.h>
 #include <qlayout.h>
 #include <qtimer.h>
+#include <qfont.h>
+#include <qbitmap.h>
 #include <qpainter.h>
 #include <qtooltip.h>
 #include <qcursor.h>
@@ -26,16 +29,34 @@
 //fitz
 #include "fitz.h"
 #include "client.h"
-#include "bar.h"
 #include "factory.h"
 #include "fakemouse.h"
+#include "button.h"
 
 //C
 #include <assert.h>
 
+//X11
+#include <X11/Xlib.h>
+
 namespace Fitz {
 
-const int DELAY_LENGTH=200;
+///////////////////////////////////////////////////////////
+// initialization
+
+// Constructor
+Client::Client(KDecorationBridge *b, KDecorationFactory *f) 
+	: KDecoration(b, f), event(0) { ; }
+
+Client::~Client() {
+	for (int n=0; n<BtnType::COUNT; n++) {
+		if (button[n]) delete button[n];
+	}
+	//???
+	//delete titleBar;
+}
+
+//constants for init()
 const char *const  fitzLabel =
 "<b><center>Fitz preview</center></b><br />"
 
@@ -45,12 +66,8 @@ const char *const  fitzLabel =
 "<p><center>If you click on the frame of a maximized window, the mouse will "
 "jump.  You can click this frame for a demonstration.<center></p>";
 
-// Constructor
-Client::Client(KDecorationBridge *b, KDecorationFactory *f) 
-	: KDecoration(b, f), event(0) { ; }
-
-Client::~Client()
-{ ; }
+const int DELAY_LENGTH=200;
+int Client::framesize_ = 3;
 
 // Actual initializer for class
 void Client::init() {
@@ -88,7 +105,8 @@ void Client::init() {
 				widget()), 2,1
 		);
 		mainlayout->addRowSpacing(1,0);
-		bar=new Bar(this, "preview button bar", false);
+		toplevel = false;
+		barInit();
 	/*} else if(type != NET::Normal) {{
 		//dialog box
 		mainlayout->addItem(new QSpacerItem(0, 0), 2, 1);
@@ -97,17 +115,179 @@ void Client::init() {
 	} else {
 		//normal window
 		mainlayout->addRowSpacing(1,0);
-		bar=new Bar(this, "button bar", true);
-		QTimer::singleShot(0,bar,SLOT(reparent()));
+		toplevel = true;
+		barInit();
+		QTimer::singleShot(0,this,SLOT(reparent()));
 	}
 
 	// setup titlebar buttons
-	bar->addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
+	addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
 
 	//maximize the window if appropriate
 	if(Factory::autoMax() && type == NET::Normal)
 		QTimer::singleShot(0,this,SLOT(maximizeFull()));
 }
+
+void Client::barInit() {
+	bar = new QWidget(widget(), "button bar", toplevel?(WType_TopLevel | WX11BypassWM):0);
+	reparented = 0;
+	// for flicker-free redraws
+	if(toplevel)
+		bar->setBackgroundMode(NoBackground);
+
+	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
+	
+	box = new QBoxLayout ( bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
+
+	// setup titlebar buttons
+	for (int n=0; n<BtnType::COUNT; n++) {
+		button[n] = 0;
+	}
+	slantWidth = (BTN_HEIGHT-framesize_+4)/2;
+	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
+	titleBar = new QPixmap;
+	
+	bar->setMouseTracking(true);
+	bar->installEventFilter(this);
+	
+	if(toplevel)
+		bar->setMask(QRegion());
+	else
+		reparented=true;
+}
+
+//this function finds the parent window of the window decoration widget and
+//makes the bar a child of that window
+void Client::reparent() {
+	Display* disp = bar->x11Display();
+	Window barWin = bar->winId();
+	Window deco = widget()->winId();
+	Window root;
+	Window parent;
+	Window *children;
+	unsigned int num_children;
+	
+	XQueryTree(disp, deco, &root, &parent, &children, &num_children);
+	if (children)
+		XFree(children);
+	
+	XReparentWindow(disp, barWin, parent, 0, 0);
+	reparented = true;
+	resizeBar();
+}
+///////////////////////////////////////////////////////////
+// button creation
+
+// Add buttons to title layout
+void Client::addButtons(const QString& s) {
+	//kdDebug()<<"Client::addButtons()"<<endl;
+	btnsWidth=0;
+	box->addSpacing(slantWidth);
+	for (unsigned i=0; i < s.length(); i++) {
+		switch (s[i]) {
+
+	// Buttons
+		  case 'M': // Menu button
+			addButton(BtnType::MENU, "Menu",
+					SIGNAL(pressed()), SLOT(menuButtonPressed()));
+			break;
+
+		  case 'H': // Help button
+			if(providesContextHelp())
+				addButton(BtnType::HELP, "Help",
+					SIGNAL(clicked()), SLOT(showContextHelp()));
+			break;
+
+		  case 'I': // Minimize button
+			addButton(BtnType::MIN, "Minimize",
+					SIGNAL(clicked()), SLOT(minimize()));
+			break;
+
+		  case 'A': // Maximize button
+			addButton(BtnType::MAX, "Maximize",
+					SIGNAL(clicked()), SLOT(maxButtonPressed()));
+			//set the pixmap to the correct mode
+			button[BtnType::MAX]->setPixmap(maximizeMode());
+			break;
+
+		  case 'X': // Close button
+			addButton(BtnType::CLOSE, "Close",
+					SIGNAL(clicked()), SLOT(closeWindow()));
+			break;
+
+		  case 'R': // Resize button
+			addButton(BtnType::RESIZE, "Resize",
+					SIGNAL(clicked()), SLOT(resizeButtonPressed()));
+			break;
+
+	// Buttons that can be toggled
+		  case 'S': // Sticky button
+			addButton(BtnType::STICKY, "Sticky", isOnAllDesktops(),
+					SLOT(toggleOnAllDesktops())); 
+			break;
+
+		  case 'F': // Keep Above button
+			addButton(BtnType::ABOVE, "Above", keepAbove(),
+					SLOT(setKeepAbove(bool)));
+			connect(this,SIGNAL(keepAboveChanged(bool)),
+					button[BtnType::ABOVE],SLOT(setPixmap(bool)));
+			break;
+
+		  case 'B': // Keep Below button
+			addButton(BtnType::BELOW, "Below", keepBelow(),
+					SLOT(setKeepBelow(bool)));
+			connect(this,SIGNAL(keepBelowChanged(bool)),
+					button[BtnType::BELOW],SLOT(setPixmap(bool)));
+			break;
+
+		  case 'L': // Shade button
+			addButton(BtnType::SHADE, "Shade", isSetShade(),
+					SLOT(setShade(bool)));
+			break;
+
+	// Things that aren't buttons
+		  case '_': // Spacer item
+			box->addSpacing(SPACERSIZE);
+			btnsWidth+=SPACERSIZE;
+			break;
+
+		  case ' ': // Title bar
+			box->addItem(titleSpace);
+			captionChange();
+			break;
+
+		  default:
+			kdDebug()<<"Unknown Button: "<<char(s[i])<<endl;
+			break;
+		}
+	}
+	resizeBar();
+}
+
+// Add a generic button to title layout (called by addButtons() )
+void Client::addButton(BtnType::Type b, const char *name,
+		const char* signal, const char* slot)
+{
+	unless(button[b]) {
+		button[b] = new Button(bar, name, this, b);
+		connect(button[b], signal, this, slot);
+		box->addWidget (button[b],0,Qt::AlignTop);
+	}
+	btnsWidth+=BTN_WIDTH;
+}
+
+// This adds a button that can be toggled ( it is also called by addButtons() )
+void Client::addButton(BtnType::Type b, const char *name, bool on,
+		const char* slot)
+{
+	addButton(b,name,SIGNAL(toggled(bool)),slot);
+	button[b]->setPixmap(on);
+	connect(button[b],SIGNAL(clicked()),button[b],SLOT(toggle()));
+}
+
+
+///////////////////////////////////////////////////////////
+// actions
 
 void Client::maximizeFull() {
 	QWidget *w=widget();
@@ -117,13 +297,17 @@ void Client::maximizeFull() {
 
 // window active state has changed
 void Client::activeChange() {
-	bar->activeChange(isActive());
+	//bar->activeChange(isActive());
 	widget()->repaint(false);
 }
 
 // Called when desktop/sticky changes
 void Client::desktopChange() {
-	bar->desktopChange(isOnAllDesktops());
+	if (button[BtnType::STICKY]) {
+		button[BtnType::STICKY]->setPixmap(isOnAllDesktops());
+		QToolTip::remove(button[BtnType::STICKY]);
+		QToolTip::add(button[BtnType::STICKY], isOnAllDesktops() ? i18n("Un-Sticky") : i18n("Sticky"));
+	}
 }
 
 // The icon has changed, but I don't care.
@@ -133,12 +317,57 @@ void Client::iconChange()
 // The title has changed
 void Client::captionChange() {
 	//kdDebug()<<" Client::captionChange()"<<endl;
-	bar->captionChange(caption());
+	//make the string shorter - remove everything after " - "
+	QString file(caption());
+	file.truncate(file.find(" - "));
+	kdDebug()<<"Client::caption("<<file<<")"<<endl;
+
+	//change the font
+	QFont font = options()->font();
+	font.setPixelSize(BTN_HEIGHT-1);
+	font.setItalic(false);
+	font.setWeight(QFont::DemiBold);
+	font.setStretch(130);
+	
+	//figure out the width
+	QFontMetrics fm(font);
+	int width = fm.width(file) + BTN_WIDTH/2;
+	int oldWidth = titleBar->width();
+	btnsWidth+=width-oldWidth;
+	titleBar->resize(width,BTN_HEIGHT);
+	
+	//force repaint even if resize was a nop
+	if(width==oldWidth)
+		bar->update();
+	
+	//read in colors
+	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
+	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
+	
+	//make the bitmap for the caption
+	QPainter p;
+	p.begin(titleBar);
+	p.setPen(fg);
+	p.setFont(font);
+	p.fillRect(0,0,width,BTN_HEIGHT,bg);
+	//p.shear(0,.5);
+	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
+	p.end();
+	
+	if(oldWidth) {
+		resizeBar();
+	}
 }
 
 // Maximized state has changed
 void Client::maximizeChange() {
-	bar->maximizeChange(maximizeMode());
+	if (button[BtnType::MAX]) {
+		//set the image
+		button[BtnType::MAX]->setPixmap(maximizeMode());
+		
+		QToolTip::remove(button[BtnType::MAX]);
+		QToolTip::add(button[BtnType::MAX], maximizeMode() ? i18n("Restore") : i18n("Maximize"));
+	}
 }
 
 // The window has been shaded or unshaded
@@ -146,6 +375,47 @@ void Client::shadeChange() {
 	kdDebug()<<" Client::shadeChange() : window shading does not work yet"<<endl;
 	//if(isShade()) setShade(false);
 }
+
+
+// Max button was pressed
+void Client::maxButtonPressed() {
+	if (button[BtnType::MAX]) {
+		switch (button[BtnType::MAX]->lastMousePress()) {
+		  case MidButton:
+			maximize(maximizeMode() ^ KDecoration::MaximizeVertical);
+			break;
+		  case RightButton:
+			maximize(maximizeMode() ^ KDecoration::MaximizeHorizontal);
+			break;
+		  default:
+			if (maximizeMode() == KDecoration::MaximizeFull) {
+				maximize(KDecoration::MaximizeRestore);
+			} else {
+				maximize(KDecoration::MaximizeFull);
+			}
+		}
+	}
+}
+
+// Menu button was pressed (popup the menu)
+void Client::menuButtonPressed() {
+	if (button[BtnType::MENU]) {
+		QPoint p(button[BtnType::MENU]->rect().bottomLeft().x(),
+				 button[BtnType::MENU]->rect().bottomLeft().y());
+		KDecorationFactory* f = factory();
+		showWindowMenu(button[BtnType::MENU]->mapToGlobal(p));
+		unless(f->exists(this)) return; // decoration was destroyed
+		button[BtnType::MENU]->setDown(false);
+	}
+}
+
+void Client::resizeButtonPressed() {
+	performWindowOperation(KDecoration::ResizeOp);
+}
+
+
+///////////////////////////////////////////////////////////
+// size stuff
 
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
@@ -159,46 +429,95 @@ void Client::resize(const QSize &size) {
 	widget()->resize(size);
 }
 
+void Client::resizeBar() {
+	//kdDebug()<<"Client::resizeBar() : "<<caption()<<endl;
+	
+	//Welcome to the land of magic constants.  I hope you enjoy your stay.
+	bar->setFixedSize(
+			btnsWidth+slantWidth-1,
+			BTN_HEIGHT+2+slantWidth*2
+	);
+	
+	int frameX = bar->width()-framesize_+2;
+	int barY = BTN_HEIGHT+2;
+	
+	corners.putPoints(
+		0, 6,
+		0, 0,
+		0, framesize_-2,
+		slantWidth, barY,
+		frameX-slantWidth-1, barY,
+		frameX, barY+slantWidth*2+2,
+		frameX,0
+	);
+
+	reposition();
+
+	if(reparented)
+		bar->setMask(QRegion(corners));
+}
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
 	return QSize(bar->width()+framesize_*2+20, framesize_*2+20);
 }
 
-// Return logical mouse position
-KDecoration::Position Client::mousePosition(const QPoint &point) const {
-	const int corner = 32;
-	Position pos = PositionCenter;
-	
-	//kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
-
-	int x = point.x();
-	int y = point.y();
-	
-	if(bar->geometry().contains(point))
-		return PositionCenter;
-	
-	if (x <= corner)
-		pos = PositionLeft;
-	else if (x >= (width()-corner))
-		pos = PositionRight;
-
-	if (y <= corner)
-		 pos = static_cast<Position>(pos | PositionTop);
-	else if (y >= (height()-corner))
-		pos = static_cast<Position>(pos | PositionBottom);
-
-	return pos;
+// Window is being resized
+void Client::resizeEvent(QResizeEvent *)  {
+	if (widget()->isShown()) {
+		widget()->erase(widget()->rect());
+	}
+	reposition();
 }
+
+//moves the bar to the correct location
+void Client::reposition() {
+	//kdDebug()<<"Client::reposition("<<geometry()<<") : "<<caption()<<endl;
+	
+	int x=width()-bar->width()-1;
+	int y=2;
+	if(framesize_<=2)
+		y=1;
+	bar->move(x,y);
+}
+
+void Client::setBorderSize(BorderSize b) {
+	switch(b) {
+	  case BorderTiny:
+		framesize_ = 1;
+		break;
+	  case BorderNormal:
+		framesize_ = 3;
+		break;
+	  case BorderLarge:
+		framesize_ = 6;
+		break;
+	  case BorderVeryLarge:
+		framesize_ = 10;
+		break;
+	  case BorderHuge:
+	  case BorderVeryHuge:
+	  case BorderOversized:
+	  default:
+		framesize_ = 3;
+		break;
+	}
+}
+
+///////////////////////////////////////////////////////////
+// the great event filter
 
 // Event filter
 bool Client::eventFilter(QObject *obj, QEvent *e) {
-	if (obj != widget()) return false;
+	if (obj == bar)
+		return barEventFilter(obj, e);
+	if (obj != widget())
+		return false;
 	//kdDebug()<<"Client::eventFilter("<<e->type()<<") : "<<caption()<<endl;
  
 	switch (e->type()) {
 	  case QEvent::MouseButtonPress:
 		mousePressEvent(static_cast<QMouseEvent *>(e));
-		return true;
+	return true;
 	  case QEvent::MouseButtonRelease:
 		mouseReleaseEvent(static_cast<QMouseEvent *>(e));
 		return true;
@@ -228,6 +547,86 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 
 	return false;
 }
+
+
+// Event filter
+bool Client::barEventFilter(QObject *obj, QEvent *e) {
+	if (obj != bar) return false;
+	//kdDebug()<<"Client::eventFilter("<<e->type()<<") : "<<client->caption()<<endl;
+	QMouseEvent *me;
+	QWheelEvent *we;
+	QEvent *event;
+	
+	switch (e->type()) {
+	  case QEvent::MouseButtonPress:
+	  case QEvent::MouseButtonRelease:
+	  case QEvent::Leave:
+	  case QEvent::Enter:
+	  case QEvent::MouseMove:
+	  case QEvent::MouseButtonDblClick:
+		me = static_cast<QMouseEvent *>(e);
+		
+		//move the posiiton of the event so that it is relative to
+		//client->widget()
+		event = new QMouseEvent(
+			me->type(), me->pos() + bar->pos(),
+			me->globalPos(), me->button(), me->state()
+		);
+		break;
+		
+	  case QEvent::Wheel:
+		we = static_cast< QWheelEvent* >( e );
+		
+		//move the posiiton of the event so that it is relative to
+		//client->widget()
+		event = new QWheelEvent(
+			we->pos() + bar->pos(), we->globalPos(), we->delta(), we->state(),
+			we->orientation()
+		);
+		//QWheelEvent ( const QPoint & pos, const QPoint & globalPos, int delta, int state, Orientation orient = Vertical )
+		break;
+			
+	  case QEvent::Paint:
+		barPaintEvent(static_cast<QPaintEvent *>(e));
+		return true;
+
+	  default:
+		return false;
+	}
+	QApplication::postEvent(widget(),event);
+	return true;
+}
+
+
+///////////////////////////////////////////////////////////
+// mouse stuff
+
+// Return logical mouse position
+KDecoration::Position Client::mousePosition(const QPoint &point) const {
+	const int corner = 32;
+	Position pos = PositionCenter;
+	
+	//kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
+
+	int x = point.x();
+	int y = point.y();
+	
+	if(bar->geometry().contains(point))
+		return PositionCenter;
+	
+	if (x <= corner)
+		pos = PositionLeft;
+	else if (x >= (width()-corner))
+		pos = PositionRight;
+
+	if (y <= corner)
+		 pos = static_cast<Position>(pos | PositionTop);
+	else if (y >= (height()-corner))
+		pos = static_cast<Position>(pos | PositionBottom);
+
+	return pos;
+}
+
 
 // Deal with mouse click
 void Client::mousePressEvent(QMouseEvent *e) {
@@ -320,6 +719,10 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 		titlebarDblClickOperation();
 }
 
+
+///////////////////////////////////////////////////////////
+// painting
+
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
@@ -358,19 +761,39 @@ void Client::paintEvent(QPaintEvent* e) {
 	painter.drawRect(frame);
 }
 
-// Window is being resized
-void Client::resizeEvent(QResizeEvent *)  {
-	if (widget()->isShown()) {
-		widget()->erase(widget()->rect());
-	}
-	bar->reposition();
+void Client::barPaintEvent(QPaintEvent*) {
+	//kdDebug()<<"Client::barPaintEvent()"<<endl;
+	unless(fitzFactoryInitialized()) return;
+	
+	QPointArray line;
+	line.putPoints(0,4,corners,1);
+	line.translate(0,-1);
+
+	QPointArray fill(6);
+	fill.putPoints(1,4,corners,1);
+	fill.translate(0,-2);
+	fill.setPoint(0,0,0);
+	fill.setPoint(5,width()-framesize_+2,0);
+	
+	QColorGroup group;
+	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
+	
+	QPainter painter(bar);
+	painter.setPen(group.background());
+	painter.setBrush(group.background());
+	painter.drawPolygon(fill);
+	painter.setPen(group.background().dark(130));
+	painter.drawPolyline(line);
+	
+	QPoint origin = titleSpace->geometry().topLeft();
+	painter.drawPixmap(origin,*titleBar);
 }
 
 // Window is being shown
 void Client::showEvent(QShowEvent *)  {
 	widget()->update();
 	bar->show();
-	bar->reposition();
+	reposition();
 }
 
 }

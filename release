@@ -1,74 +1,80 @@
-#!/usr/bin/make -C /var/deb/release-fitz/ -f 
-#this script dowloads fitz from cvs, makes a tarball for release, and then
-#tests it
+# #!/usr/bin/make -C /var/deb/release-fitz/ -f 
+# 
+# the release makefile
+# -------------------
+# Copyright (c) 2005 by Jeffrey McGee <jeffreym@cs.tamu.edu>
+#
+# You can Freely distribute this program under the GNU General Public
+# License. See the file "COPYING" for the exact licensing terms.
+##############################################################################
 
-#The chance that this script works on someone else's computer is negligible.
-#You're going to need to edit it some.
+# This script dowloads fitz from cvs, makes a tarball for release, and then
+# tests it.  The chance that this script works on someone else's computer is
+# negligible.  You're going to need to edit it some.
+ver:=0.2
+tag:=fitz-0_2
+pkg:=fitz-$(ver)
+tbz:=$(pkg).tar.bz2
+deb:=fitz_$(ver)-1_i386.deb
 
-pkg:="fitz-0.2"
-tbz:="$(pkg).tar.bz2"
 unexport UNSERMAKE
 
-all: clean co release
+.PHONY: all co tar deb tartest debtest test put clean
+
+all: clean co tar deb
+test: debtest tartest
 
 co: 
 	#download and clean fitz
-	cvs -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz login
-	cvs -z3 -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz co -P fitz
-	mv fitz $(pkg)
+	#cvs -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz login
+	#cvs -z3 -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz co -P fitz
+	cvs -z3 -d:ext:nerd4christ@cvs.sourceforge.net:/cvsroot/fitz export -r $(tag) -d $(pkg) fitz
 	cd $(pkg) && make -f Makefile.cvs
-	cd $(pkg) && rm -rf supermake kwintheme.html supermake release Makefile.cvs release
+	cd $(pkg) && rm -rf supermake kwintheme.html supermake release Makefile.cvs testfitz design.png templates autom4te.cache
 
-
-tar: |co
+tar:
 	#make the tarball
 	tar -cjf $(tbz) $(pkg)
 	md5sum $(tbz) > $(tbz).md5
-	rm -rf $(pkg)
 
+deb:
+	sudo chroot /var/deb/ su jeff -c '\
+		cd /release-fitz/$(pkg) && \
+		dpkg-buildpackage -rfakeroot'
 
-release: deb tar
-	#upload it
-	#ncftpput -p \"\" upload.sourceforge.net /incoming $(pkg).tar.bz2
-	#ncftpput -p \"\" upload.sourceforge.net /incoming $(pkg).tar.bz2
-
-	#print instructions
-	@echo "> md5sum $(tbz)"
-	@cat $(tbz).md5
-	@echo <<EOF
-	> tar -xjf $(tbz)
-	> cd $(pkg)
-	> ./configure
-	> make
-	> sudo make install
-	EOF
-
-deb: co
-	echo sudo mount --bind /var/make/
-	echo sudo chroot /var/deb/ 
-	cat <<EOF
-	cd /release-fitz
-	
-	EOF
-
-test: tar
+tartest:
 	#test build
+	rm -rf $(pkg)
 	tar -xjf $(tbz)
-	cd $(pkg)
-	./configure
-	make
-
+	cd $(pkg) && ./configure
+	cd $(pkg) && make
 	#get rid of the old fitz
-	killall kwin
-	kdekillall kwin
+	killall kwin || kdekillall kwin
 	rm -rf /home/jeff/fitz/kde
-	rm $KDEHOME/share/config/kwinfitzrc
-	
+	rm -f $(KDEHOME)/share/config/kwinfitzrc
 	#test it
-	make install
+	cd $(pkg) && make install
 	kwin --replace
 
-clean:
-	rm -rf release-fitz
-	mkdir release-fitz
+debtest:
+	sudo chroot /var/deb/ sh -c '\
+		cd /release-fitz/ ;\
+		dpkg -r fitz ;\
+		dpkg -i $(deb)'
+	
+put:
+	#upload it
+	ncftpput -p \"\" upload.sourceforge.net /incoming $(tbz)
+	ncftpput -p \"\" upload.sourceforge.net /incoming $(deb)
+	#print instructions
+	@echo -e "\n\n> md5sum $(tbz)"
+	@cat $(tbz).md5
+	@echo -e '\
+	> tar -xjf $(tbz)\n\
+	> cd $(pkg)\n\
+	> ./configure\n\
+	> make\n\
+	> sudo make install\n'
 
+clean:
+	rm -rf fitz*

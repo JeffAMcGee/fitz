@@ -39,9 +39,6 @@ namespace BtnType {
 	};
 }
 
-//temporary global variable
-extern int framesize_;
-
 } // namespace Fitz
 
 //a spoonful of syntactic sugar makes the Perl hacker happy

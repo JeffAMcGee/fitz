@@ -15,10 +15,18 @@
 #define FITZCLIENT_H
 
 #include <kdecoration.h>
+#include <qpointarray.h>
+#include "fitz.h"
+
+class QBoxLayout;
+class QSpacerItem;
+class QPixmap;
+class QWidget;
 
 namespace Fitz {
 
-class Bar;
+class Button;
+class Factory;
 
 class Client : public KDecoration {
 	Q_OBJECT
@@ -36,16 +44,31 @@ class Client : public KDecoration {
 	virtual void shadeChange();
 
 	virtual void borders(int &l, int &r, int &t, int &b) const;
+	void reposition();
 	virtual void resize(const QSize &size);
+	virtual void resizeBar();
 	virtual QSize minimumSize() const;
 	virtual Position mousePosition(const QPoint &point) const;
+	
+	void addButtons(const QString& buttons);
 
-	static int framesize();
+	static void setBorderSize(BorderSize b);
   private slots:
 	virtual void maximizeFull();
+	virtual void reparent();
+	virtual void maxButtonPressed();
+	virtual void menuButtonPressed();
+	virtual void resizeButtonPressed();
 
   private:
+	void barInit();
 	bool eventFilter(QObject *obj, QEvent *e);
+	bool barEventFilter(QObject *obj, QEvent *e);
+	
+	void addButton(BtnType::Type b, const char *name,
+			const char* signal, const char* slot);
+	void addButton(BtnType::Type b, const char *name, bool on,
+			const char* slot);
 
 	void mousePressEvent(QMouseEvent *);
 	void mouseReleaseEvent(QMouseEvent *);
@@ -55,13 +78,26 @@ class Client : public KDecoration {
 
 	void moveEvent(QMoveEvent *);
 	void paintEvent(QPaintEvent *e);
+	void barPaintEvent(QPaintEvent *e);
 	void resizeEvent(QResizeEvent *);
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
 	
 	QMouseEvent *event;
-	Bar *bar;
+	QWidget *bar;
 	QRect oldGeom;
+	
+	//from bar
+	Button *button[BtnType::COUNT];
+	QBoxLayout *box;
+	bool reparented;
+	bool toplevel;
+	int btnsWidth;
+	int slantWidth;
+	QPointArray corners;
+	QSpacerItem *titleSpace;
+	QPixmap *titleBar;
+	static int framesize_;
 };
 
 } // namespace Fitz
