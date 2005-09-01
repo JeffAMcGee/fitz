@@ -32,7 +32,7 @@ int btnsLookup[][4] = {
 	{9}, //CLOSE
 	{8}, //MENU
 	{5,6}, //STICKY
-	{10,1}, //SHADE
+	{10,10}, //SHADE
 	{14,11}, //ABOVE
 	{13,15}, //BELOW
 	{12}, //RESIZE

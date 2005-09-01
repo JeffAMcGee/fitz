@@ -131,10 +131,8 @@ void Client::init() {
 void Client::barInit() {
 	bar = new QWidget(widget(), "button bar", toplevel?(WType_TopLevel | WX11BypassWM):0);
 	reparented = 0;
-	// for flicker-free redraws
-	if(toplevel)
-		bar->setBackgroundMode(NoBackground);
 
+	bar->setBackgroundMode(NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
 	
 	box = new QBoxLayout ( bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
@@ -297,7 +295,6 @@ void Client::maximizeFull() {
 
 // window active state has changed
 void Client::activeChange() {
-	//bar->activeChange(isActive());
 	widget()->repaint(false);
 }
 
@@ -311,8 +308,7 @@ void Client::desktopChange() {
 }
 
 // The icon has changed, but I don't care.
-void Client::iconChange()
-{ ; }
+void Client::iconChange() { ; }
 
 // The title has changed
 void Client::captionChange() {
@@ -371,10 +367,7 @@ void Client::maximizeChange() {
 }
 
 // The window has been shaded or unshaded
-void Client::shadeChange() {
-	kdDebug()<<" Client::shadeChange() : window shading does not work yet"<<endl;
-	//if(isShade()) setShade(false);
-}
+void Client::shadeChange() { ; }
 
 
 // Max button was pressed
@@ -421,7 +414,7 @@ void Client::resizeButtonPressed() {
 void Client::borders(int &l, int &r, int &t, int &b) const {
 	l = r = t = b = framesize_;
 	if(isShade())
-		t=BTN_HEIGHT+framesize_;
+		t=BTN_HEIGHT+3;
 }
 
 // Called to resize or move the window
@@ -483,7 +476,7 @@ void Client::reposition() {
 void Client::setBorderSize(BorderSize b) {
 	switch(b) {
 	  case BorderTiny:
-		framesize_ = 1;
+		framesize_ = 2;
 		break;
 	  case BorderNormal:
 		framesize_ = 3;
@@ -517,7 +510,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 	switch (e->type()) {
 	  case QEvent::MouseButtonPress:
 		mousePressEvent(static_cast<QMouseEvent *>(e));
-	return true;
+		return true;
 	  case QEvent::MouseButtonRelease:
 		mouseReleaseEvent(static_cast<QMouseEvent *>(e));
 		return true;
@@ -552,7 +545,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 // Event filter
 bool Client::barEventFilter(QObject *obj, QEvent *e) {
 	if (obj != bar) return false;
-	//kdDebug()<<"Client::eventFilter("<<e->type()<<") : "<<client->caption()<<endl;
+	//kdDebug()<<"Bar::barEventFilter("<<e->type()<<") : "<<caption()<<endl;
 	QMouseEvent *me;
 	QWheelEvent *we;
 	QEvent *event;
@@ -611,7 +604,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	int x = point.x();
 	int y = point.y();
 	
-	if(bar->geometry().contains(point))
+	if(bar->geometry().contains(point) || isSetShade())
 		return PositionCenter;
 	
 	if (x <= corner)
@@ -633,7 +626,8 @@ void Client::mousePressEvent(QMouseEvent *e) {
 	//kdDebug()<<"Client::mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
-		! bar->geometry().contains(e->pos())
+		! bar->geometry().contains(e->pos()) &&
+		! isSetShade()
 	) {
 		//this is a left mous button press that is not inside the button bar
 		assert(event == 0);
@@ -706,11 +700,13 @@ void Client::mouseLeaveEvent(QMouseEvent *) {
 	}
 }
 
-void Client::wheelEvent(QWheelEvent *e) {
 #if KDE_IS_VERSION( 3, 4, 89 )
+void Client::wheelEvent(QWheelEvent *e) {
 	titlebarMouseWheelOperation( e->delta());
-#endif	
 }
+#else	
+void Client::wheelEvent(QWheelEvent* /*e*/) { ; }
+#endif	
 
 void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 	if(e->button() != Qt::LeftButton)
@@ -759,6 +755,12 @@ void Client::paintEvent(QPaintEvent* e) {
 			frame.height() - framesize_*2 +2);
 	painter.setPen(bg.dark(130));
 	painter.drawRect(frame);
+
+	//fill in empty space
+	if(isSetShade()) {
+		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
+		painter.fillRect(frame, bg.light(120));
+	}
 }
 
 void Client::barPaintEvent(QPaintEvent*) {
