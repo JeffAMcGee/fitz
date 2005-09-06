@@ -1,6 +1,7 @@
 #!/bin/sh
 export KDEDIRS="/home/jeff/fitz/kde:${KDEDIRS}"
 make install
-killall kwin
+#killall kwin
+#sleep 1
 exec kwin --replace
 #kcontrol

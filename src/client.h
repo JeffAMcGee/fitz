@@ -83,6 +83,12 @@ class Client : public KDecoration {
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
 	
+	int headHeight() const;
+	int headWidth() const;
+	int tailHeight() const {return 12;}
+	int tailWidth() const {return 6;}
+	QRect frameGeom() const;
+		
 	QMouseEvent *event;
 	QWidget *bar;
 	QRect oldGeom;
@@ -92,9 +98,11 @@ class Client : public KDecoration {
 	QBoxLayout *box;
 	bool reparented;
 	bool toplevel;
+	bool dialog;
 	int btnsWidth;
-	int slantWidth;
 	QPointArray corners;
+	QRect head;
+	QRect tail;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
 	static int framesize_;

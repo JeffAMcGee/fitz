@@ -39,6 +39,17 @@
 //X11
 #include <X11/Xlib.h>
 
+kdbgstream& operator<<( kdbgstream &kd, const QPointArray &pa ) {
+    kd << "[";
+	for(unsigned int i=0;i<pa.size();i++) {
+		kd << pa.point(i);
+		if(i<pa.size())
+			kd << ", ";
+	}
+	kd << "]";
+    return kd;
+}
+
 namespace Fitz {
 
 ///////////////////////////////////////////////////////////
@@ -66,7 +77,6 @@ const char *const  fitzLabel =
 "<p><center>If you click on the frame of a maximized window, the mouse will "
 "jump.  You can click this frame for a demonstration.<center></p>";
 
-const int DELAY_LENGTH=200;
 int Client::framesize_ = 3;
 
 // Actual initializer for class
@@ -78,16 +88,16 @@ void Client::init() {
 	widget()->setBackgroundMode(NoBackground);
 
 	// setup layout
-	QGridLayout *mainlayout = new QGridLayout(widget(), 4, 3); // 4x3 grid
+	QGridLayout *mainlayout = new QGridLayout(widget(), 3, 3); // 4x3 grid
 
 	mainlayout->setResizeMode(QLayout::FreeResize);
-	mainlayout->addRowSpacing(0, framesize_);
-	mainlayout->addRowSpacing(3, framesize_);
+	mainlayout->addRowSpacing(0, dialog ? BTN_HEIGHT+framesize_ : framesize_);
+	mainlayout->addRowSpacing(2, framesize_);
 	mainlayout->addColSpacing(0, framesize_);
 	mainlayout->addColSpacing(2, framesize_);
 
 	// the window should stretch
-	mainlayout->setRowStretch(2, 10);
+	mainlayout->setRowStretch(1, 10);
 	mainlayout->setColStretch(1, 10);
 	
 	NET::WindowType type = windowType(
@@ -99,26 +109,19 @@ void Client::init() {
 	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
 	
 	if (isPreview()) {
-		//preview window
+		dialog = false;
+		
 		mainlayout->addWidget(
 				new QLabel(i18n(fitzLabel),
-				widget()), 2,1
+				widget()), 1,1
 		);
-		mainlayout->addRowSpacing(1,0);
-		toplevel = false;
-		barInit();
-	/*} else if(type != NET::Normal) {{
-		//dialog box
-		mainlayout->addItem(new QSpacerItem(0, 0), 2, 1);
-		mainlayout->addRowSpacing(1,0);
-		bar=new Bar(this, "dialog button bar", false);*/
 	} else {
-		//normal window
-		mainlayout->addRowSpacing(1,0);
-		toplevel = true;
-		barInit();
+		dialog = (type != NET::Normal);
+
 		QTimer::singleShot(0,this,SLOT(reparent()));
 	}
+	
+	barInit();
 
 	// setup titlebar buttons
 	addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
@@ -129,26 +132,25 @@ void Client::init() {
 }
 
 void Client::barInit() {
-	bar = new QWidget(widget(), "button bar", toplevel?(WType_TopLevel | WX11BypassWM):0);
-	reparented = 0;
+	bar = new QWidget(widget(), "button bar", isPreview()?(WType_TopLevel | WX11BypassWM):0);
+	reparented = false;
 
 	bar->setBackgroundMode(NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
 	
-	box = new QBoxLayout ( bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
+	box = new QBoxLayout ( bar, QBoxLayout::LeftToRight, 2, 0, "Fitz::Bar Layout");
 
 	// setup titlebar buttons
 	for (int n=0; n<BtnType::COUNT; n++) {
 		button[n] = 0;
 	}
-	slantWidth = (BTN_HEIGHT-framesize_+4)/2;
 	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
 	titleBar = new QPixmap;
 	
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
 	
-	if(toplevel)
+	if(isPreview())
 		bar->setMask(QRegion());
 	else
 		reparented=true;
@@ -173,6 +175,7 @@ void Client::reparent() {
 	reparented = true;
 	resizeBar();
 }
+
 ///////////////////////////////////////////////////////////
 // button creation
 
@@ -180,7 +183,7 @@ void Client::reparent() {
 void Client::addButtons(const QString& s) {
 	//kdDebug()<<"Client::addButtons()"<<endl;
 	btnsWidth=0;
-	box->addSpacing(slantWidth);
+	box->addSpacing(headWidth()-2);
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
 
@@ -270,8 +273,9 @@ void Client::addButton(BtnType::Type b, const char *name,
 		button[b] = new Button(bar, name, this, b);
 		connect(button[b], signal, this, slot);
 		box->addWidget (button[b],0,Qt::AlignTop);
+		btnsWidth+=BTN_WIDTH;
 	}
-	btnsWidth+=BTN_WIDTH;
+
 }
 
 // This adds a button that can be toggled ( it is also called by addButtons() )
@@ -415,6 +419,8 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 	l = r = t = b = framesize_;
 	if(isShade())
 		t=BTN_HEIGHT+3;
+	else if(dialog)
+		t=BTN_HEIGHT+4;
 }
 
 // Called to resize or move the window
@@ -422,33 +428,73 @@ void Client::resize(const QSize &size) {
 	widget()->resize(size);
 }
 
+int Client::headHeight() const {
+	return BTN_HEIGHT+5-framesize_;
+}
+
+int Client::headWidth() const {
+	int h = BTN_HEIGHT+5-framesize_;
+	return dialog ? (h*2-1) : (h+1)/2 ; 
+}
+
+QRect Client::frameGeom() const {
+	QRect frame = widget()->geometry();
+	if(dialog)
+		frame.setTop(headHeight()-1);
+	return frame;
+}
+
 void Client::resizeBar() {
 	//kdDebug()<<"Client::resizeBar() : "<<caption()<<endl;
 	
 	//Welcome to the land of magic constants.  I hope you enjoy your stay.
 	bar->setFixedSize(
-			btnsWidth+slantWidth-1,
-			BTN_HEIGHT+2+slantWidth*2
+		btnsWidth+headWidth()-2,
+		BTN_HEIGHT+tailHeight()+3
+	);
+	head = QRect(
+		0,
+		dialog ? 0 : framesize_,
+		headWidth(),
+		headHeight()
+	);
+	tail = QRect(
+		bar->width() - framesize_ - tailWidth(),
+		BTN_HEIGHT+4,
+		tailWidth(),
+		tailHeight()
 	);
 	
-	int frameX = bar->width()-framesize_+2;
-	int barY = BTN_HEIGHT+2;
+	if(dialog) {
+		corners.putPoints(
+			0, 7,
+			0,BTN_HEIGHT+3,
+			tail.left(), tail.top(),
+			tail.right(), tail.bottom(),
+			bar->width(), tail.bottom(),
+			bar->width(), 0,
+			head.right(), head.top(),
+			head.left(), head.bottom()
+		);
+	} else {
+		corners.putPoints(
+			0, 7,
+			0, 1,
+			head.left(), head.top(),
+			head.right(), head.bottom(),
+			tail.left(), tail.top(),
+			tail.right(), tail.bottom(),
+			bar->width()-1, tail.bottom(),
+			bar->width()-1, 1
+		);
+	}
 	
-	corners.putPoints(
-		0, 6,
-		0, 0,
-		0, framesize_-2,
-		slantWidth, barY,
-		frameX-slantWidth-1, barY,
-		frameX, barY+slantWidth*2+2,
-		frameX,0
-	);
-
 	reposition();
 
 	if(reparented)
-		bar->setMask(QRegion(corners));
+		bar->setMask(corners);
 }
+
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
 	return QSize(bar->width()+framesize_*2+20, framesize_*2+20);
@@ -456,6 +502,8 @@ QSize Client::minimumSize() const {
 
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
+	if(dialog)
+		widget()->setMask(QRegion(frameGeom()));
 	if (widget()->isShown()) {
 		widget()->erase(widget()->rect());
 	}
@@ -464,13 +512,17 @@ void Client::resizeEvent(QResizeEvent *)  {
 
 //moves the bar to the correct location
 void Client::reposition() {
-	//kdDebug()<<"Client::reposition("<<geometry()<<") : "<<caption()<<endl;
+	kdDebug()<<"Client::reposition() "<<width()<<", "<<bar->width()<<", "<<caption()<<endl;
 	
-	int x=width()-bar->width()-1;
-	int y=2;
-	if(framesize_<=2)
-		y=1;
-	bar->move(x,y);
+	if(dialog) {
+		QRegion mask(corners);
+		mask.translate(bar->x(),bar->y());
+		mask+=QRegion(frameGeom());
+		setMask(mask);
+	}
+	
+	int x=width()-bar->width();
+	bar->move(x,0);
 }
 
 void Client::setBorderSize(BorderSize b) {
@@ -723,10 +775,13 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
 
+	/*
+	//What is this for?
 	QRect rect = e->rect(); //rect is relative to the widget
 	QRect cli = geometry(); //cli is r t screen
 	rect.moveBy(cli.left(),cli.top()); //geom is now r t screen
-
+	*/
+	
 	QColorGroup group;
 	QPainter painter(widget());
 
@@ -735,27 +790,21 @@ void Client::paintEvent(QPaintEvent* e) {
 	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
 	
 	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
+	
+	QRect frame = frameGeom();
 
-	QRect frame(0, 0, width(), framesize_);
-	painter.fillRect(frame, bg);
-	frame.setRect(0, 0, framesize_, height());
-	painter.fillRect(frame, bg);
-	frame.setRect(0, height() - framesize_, width(), framesize_);
-	painter.fillRect(frame, bg);
-	frame.setRect(width()-framesize_, 0, framesize_, height());
-	painter.fillRect(frame, bg);
+	for(int i=0; i<framesize_; i++) {
+		if(i==0)
+			painter.setPen(bg.dark(150));
+		else if(i==framesize_-1)
+			painter.setPen(bg.dark(130));
+		else if(i==1)
+			painter.setPen(bg);
 
-	// outline the frame
-	frame = widget()->rect();
-
-	painter.setPen(bg.dark(150));
-	painter.drawRect(frame);
-	frame.setRect(frame.x() + framesize_-1, frame.y() + framesize_-1,
-			width() - framesize_*2 +2,
-			frame.height() - framesize_*2 +2);
-	painter.setPen(bg.dark(130));
-	painter.drawRect(frame);
-
+		painter.drawRect(frame);
+		frame.addCoords(1,1,-1,-1);
+	}
+	
 	//fill in empty space
 	if(isSetShade()) {
 		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
@@ -763,29 +812,50 @@ void Client::paintEvent(QPaintEvent* e) {
 	}
 }
 
-void Client::barPaintEvent(QPaintEvent*) {
-	//kdDebug()<<"Client::barPaintEvent()"<<endl;
-	unless(fitzFactoryInitialized()) return;
-	
-	QPointArray line;
-	line.putPoints(0,4,corners,1);
-	line.translate(0,-1);
 
-	QPointArray fill(6);
-	fill.putPoints(1,4,corners,1);
-	fill.translate(0,-2);
-	fill.setPoint(0,0,0);
-	fill.setPoint(5,width()-framesize_+2,0);
+void Client::barPaintEvent(QPaintEvent*) {
+	kdDebug()<<"Client::barPaintEvent() : "<<caption()<<endl;
+	unless(fitzFactoryInitialized()) return;
 	
 	QColorGroup group;
 	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
 	
 	QPainter painter(bar);
+	
+	//fill in the empty space
 	painter.setPen(group.background());
 	painter.setBrush(group.background());
-	painter.drawPolygon(fill);
-	painter.setPen(group.background().dark(130));
-	painter.drawPolyline(line);
+	painter.drawPolygon(corners);
+
+	QPointArray line;
+
+	if(dialog) {
+		line.putPoints(
+			0, 3,
+			0, tail.top()-1,
+			tail.left(), tail.top()-1,
+			tail.right(), tail.bottom()-1
+		);
+		
+		painter.setPen(group.background().dark(130));
+		painter.drawPolyline(line);
+		
+		line.putPoints(
+			0, 4,
+			bar->width()-1, tail.bottom(),
+			bar->width()-1, 0,
+			head.right()+1, head.top(),
+			head.left(), head.bottom()
+		);
+		
+		painter.setPen(group.background().dark(150));
+		painter.drawPolyline(line);
+	} else {
+		line.putPoints(0,4,corners,1);
+		line.translate(0,-1);
+		painter.setPen(group.background().dark(130));
+		painter.drawPolyline(line);
+	}
 	
 	QPoint origin = titleSpace->geometry().topLeft();
 	painter.drawPixmap(origin,*titleBar);
