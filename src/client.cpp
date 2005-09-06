@@ -514,15 +514,15 @@ void Client::resizeEvent(QResizeEvent *)  {
 void Client::reposition() {
 	kdDebug()<<"Client::reposition() "<<width()<<", "<<bar->width()<<", "<<caption()<<endl;
 	
+	int x=width()-bar->width();
+	bar->move(x,0);
+	
 	if(dialog) {
 		QRegion mask(corners);
-		mask.translate(bar->x(),bar->y());
+		mask.translate(x,0);
 		mask+=QRegion(frameGeom());
 		setMask(mask);
 	}
-	
-	int x=width()-bar->width();
-	bar->move(x,0);
 }
 
 void Client::setBorderSize(BorderSize b) {
@@ -775,13 +775,6 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
 
-	/*
-	//What is this for?
-	QRect rect = e->rect(); //rect is relative to the widget
-	QRect cli = geometry(); //cli is r t screen
-	rect.moveBy(cli.left(),cli.top()); //geom is now r t screen
-	*/
-	
 	QColorGroup group;
 	QPainter painter(widget());
 
