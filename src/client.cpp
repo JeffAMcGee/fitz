@@ -87,19 +87,6 @@ void Client::init() {
 	// for flicker-free redraws
 	widget()->setBackgroundMode(NoBackground);
 
-	// setup layout
-	QGridLayout *mainlayout = new QGridLayout(widget(), 3, 3); // 4x3 grid
-
-	mainlayout->setResizeMode(QLayout::FreeResize);
-	mainlayout->addRowSpacing(0, dialog ? BTN_HEIGHT+framesize_ : framesize_);
-	mainlayout->addRowSpacing(2, framesize_);
-	mainlayout->addColSpacing(0, framesize_);
-	mainlayout->addColSpacing(2, framesize_);
-
-	// the window should stretch
-	mainlayout->setRowStretch(1, 10);
-	mainlayout->setColStretch(1, 10);
-	
 	NET::WindowType type = windowType(
 			NET::NormalMask | NET::DesktopMask | NET::DockMask |
 			NET::ToolbarMask | NET::MenuMask | NET::DialogMask |
@@ -111,6 +98,9 @@ void Client::init() {
 	if (isPreview()) {
 		dialog = false;
 		
+		// setup layout
+		QGridLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::LeftToRight, framesize_, 0);
+		mainlayout->setResizeMode(QLayout::FreeResize);
 		mainlayout->addWidget(
 				new QLabel(i18n(fitzLabel),
 				widget()), 1,1
@@ -171,7 +161,7 @@ void Client::reparent() {
 	if (children)
 		XFree(children);
 	
-	XReparentWindow(disp, barWin, parent, 0, 0);
+	XReparentWindow(disp, barWin, parent, bar->x(), 0);
 	reparented = true;
 	resizeBar();
 }
@@ -316,11 +306,10 @@ void Client::iconChange() { ; }
 
 // The title has changed
 void Client::captionChange() {
-	//kdDebug()<<" Client::captionChange()"<<endl;
 	//make the string shorter - remove everything after " - "
 	QString file(caption());
 	file.truncate(file.find(" - "));
-	kdDebug()<<"Client::caption("<<file<<")"<<endl;
+	kdDebug()<<"Client::captionChange("<<file<<")"<<endl;
 
 	//change the font
 	QFont font = options()->font();
@@ -502,18 +491,13 @@ QSize Client::minimumSize() const {
 
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
-	if(dialog)
-		widget()->setMask(QRegion(frameGeom()));
-	if (widget()->isShown()) {
-		widget()->erase(widget()->rect());
-	}
 	reposition();
 }
 
 //moves the bar to the correct location
 void Client::reposition() {
-	kdDebug()<<"Client::reposition() "<<width()<<", "<<bar->width()<<", "<<caption()<<endl;
-	
+	if(width() == 0) return;
+
 	int x=width()-bar->width();
 	bar->move(x,0);
 	
@@ -632,7 +616,7 @@ bool Client::barEventFilter(QObject *obj, QEvent *e) {
 		break;
 			
 	  case QEvent::Paint:
-		barPaintEvent(static_cast<QPaintEvent *>(e));
+		//barPaintEvent(static_cast<QPaintEvent *>(e));
 		return true;
 
 	  default:
@@ -803,11 +787,14 @@ void Client::paintEvent(QPaintEvent* e) {
 		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
 		painter.fillRect(frame, bg.light(120));
 	}
+	//avoid flicker by drawing bar now instead of waiting for event loop to send
+	//paintEvent to bar
+	barPaintEvent(e);
 }
 
 
 void Client::barPaintEvent(QPaintEvent*) {
-	kdDebug()<<"Client::barPaintEvent() : "<<caption()<<endl;
+	//kdDebug()<<"Client::barPaintEvent() : "<<caption()<<endl;
 	unless(fitzFactoryInitialized()) return;
 	
 	QColorGroup group;
