@@ -103,6 +103,7 @@ class Client : public KDecoration {
 	QPointArray corners;
 	QRect head;
 	QRect tail;
+	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
 	static int framesize_;

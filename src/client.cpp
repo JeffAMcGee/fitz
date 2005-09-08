@@ -99,7 +99,7 @@ void Client::init() {
 		dialog = false;
 		
 		// setup layout
-		QGridLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::LeftToRight, framesize_, 0);
+		QBoxLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::LeftToRight, framesize_, 0);
 		mainlayout->setResizeMode(QLayout::FreeResize);
 		mainlayout->addWidget(
 				new QLabel(i18n(fitzLabel),
@@ -137,9 +137,16 @@ void Client::barInit() {
 	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
 	titleBar = new QPixmap;
 	
+	headSpace = new QSpacerItem(
+			headWidth()-2,0,
+			QSizePolicy::Fixed,
+			QSizePolicy::Minimum
+	);
+	box->addItem(headSpace);
+	
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
-	
+
 	if(isPreview())
 		bar->setMask(QRegion());
 	else
@@ -173,7 +180,6 @@ void Client::reparent() {
 void Client::addButtons(const QString& s) {
 	//kdDebug()<<"Client::addButtons()"<<endl;
 	btnsWidth=0;
-	box->addSpacing(headWidth()-2);
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
 
@@ -405,6 +411,7 @@ void Client::resizeButtonPressed() {
 
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
+	kdDebug()<<"Client::borders() : "<<caption()<<endl;
 	l = r = t = b = framesize_;
 	if(isShade())
 		t=BTN_HEIGHT+3;
@@ -414,6 +421,39 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
+	kdDebug()<<"Client::resize() : "<<caption()<<<<endl;
+	if( (size.width()<500 && !dialog) ||
+		(size.width()>600 && dialog)) 
+	{
+		dialog=!dialog;
+		
+		if(!dialog)	clearMask();
+		headSpace->changeSize(
+			headWidth()-2,0,
+			QSizePolicy::Fixed,
+			QSizePolicy::Minimum
+		);
+		box->invalidate();
+		resizeBar();
+		
+		//make the tab apear above the window if possible
+		int h = 0;
+		/*QRect geom = geometry();
+		QSize s(size);
+		if(geom.y() != 0) {
+			h = dialog ? headHeight()-1 : -headHeight()+1;
+			s.setHeight(s.height()+h);
+		}*/
+		
+		//tell kwin about our change
+		if( !isSetShade() ) {
+			setShade(1);
+			widget()->resize(s);
+			//if(h) widget()->move(geom.x(),geom.y()+h);
+			setShade(0);
+			return;
+		}
+	}
 	widget()->resize(size);
 }
 
@@ -491,6 +531,7 @@ QSize Client::minimumSize() const {
 
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
+	kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
 	reposition();
 }
 
