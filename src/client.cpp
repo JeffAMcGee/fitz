@@ -411,7 +411,7 @@ void Client::resizeButtonPressed() {
 
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
-	kdDebug()<<"Client::borders() : "<<caption()<<endl;
+	//kdDebug()<<"Client::borders() : "<<caption()<<endl;
 	l = r = t = b = framesize_;
 	if(isShade())
 		t=BTN_HEIGHT+3;
@@ -421,7 +421,7 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	kdDebug()<<"Client::resize() : "<<caption()<<<<endl;
+	//kdDebug()<<"Client::resize() : "<<caption()<<endl;
 	if( (size.width()<500 && !dialog) ||
 		(size.width()>600 && dialog)) 
 	{
@@ -448,7 +448,8 @@ void Client::resize(const QSize &size) {
 		//tell kwin about our change
 		if( !isSetShade() ) {
 			setShade(1);
-			widget()->resize(s);
+			widget()->resize(size);
+			//widget()->resize(s);
 			//if(h) widget()->move(geom.x(),geom.y()+h);
 			setShade(0);
 			return;
@@ -531,7 +532,7 @@ QSize Client::minimumSize() const {
 
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
-	kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
+	//kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
 	reposition();
 }
 
@@ -681,7 +682,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	int x = point.x();
 	int y = point.y();
 	
-	if(bar->geometry().contains(point) || isSetShade())
+	if((bar->geometry().contains(point) && y>1) || isSetShade())
 		return PositionCenter;
 	
 	if (x <= corner)
@@ -703,10 +704,10 @@ void Client::mousePressEvent(QMouseEvent *e) {
 	//kdDebug()<<"Client::mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
-		! bar->geometry().contains(e->pos()) &&
+		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
 		! isSetShade()
 	) {
-		//this is a left mous button press that is not inside the button bar
+		//this is a left mouse button press that is not inside the button bar
 		assert(event == 0);
 		event=new QMouseEvent(
 				e->type(), e->pos(),
@@ -720,7 +721,7 @@ void Client::mousePressEvent(QMouseEvent *e) {
 void Client::mouseReleaseEvent(QMouseEvent *e) {
 	//kdDebug()<<"Client::mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 
-	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton)  && event !=0) {
+	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton) && event !=0) {
 		delete event;
 		event=0;
 		
