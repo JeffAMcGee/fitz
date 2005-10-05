@@ -73,6 +73,7 @@ class Client : public KDecoration {
 	void mousePressEvent(QMouseEvent *);
 	void mouseReleaseEvent(QMouseEvent *);
 	void mouseLeaveEvent(QMouseEvent *);
+	void mouseEnterEvent(QMouseEvent *);
 	void mouseDoubleClickEvent(QMouseEvent *e);
 	void wheelEvent(QWheelEvent *e);
 
@@ -85,8 +86,8 @@ class Client : public KDecoration {
 	
 	int headHeight() const;
 	int headWidth() const;
-	int tailHeight() const {return 12;}
-	int tailWidth() const {return 6;}
+	int tailHeight() const {return 16;}
+	int tailWidth() const {return 8;}
 	QRect frameGeom() const;
 		
 	QMouseEvent *event;
@@ -97,8 +98,8 @@ class Client : public KDecoration {
 	Button *button[BtnType::COUNT];
 	QBoxLayout *box;
 	bool reparented;
-	bool toplevel;
 	bool dialog;
+	bool dialogType;
 	int btnsWidth;
 	QPointArray corners;
 	QRect head;
@@ -107,6 +108,14 @@ class Client : public KDecoration {
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
 	static int framesize_;
+	
+	//for gravity
+	bool do_accel;
+	bool do_thresh;
+	bool slow;
+	int accel_num;
+	int accel_denom;
+	int thresh;
 };
 
 } // namespace Fitz

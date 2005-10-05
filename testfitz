@@ -2,7 +2,7 @@
 export PATH="/home/jeff/fitz/kde/bin:${PATH}"
 export KDEDIRS="/home/jeff/fitz/kde:${KDEDIRS}"
 make install
-#killall kwin
+killall kwin
 #sleep 1
 exec kwin --replace
-#kcontrol
+#kcmshell kwindecoration

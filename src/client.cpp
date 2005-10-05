@@ -83,8 +83,6 @@ int Client::framesize_ = 3;
 void Client::init() {
 	createMainWidget(WResizeNoErase | WRepaintNoErase);
 	widget()->installEventFilter(this);
-
-	// for flicker-free redraws
 	widget()->setBackgroundMode(NoBackground);
 
 	NET::WindowType type = windowType(
@@ -96,22 +94,28 @@ void Client::init() {
 	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
 	
 	if (isPreview()) {
-		dialog = false;
+		dialogType = dialog = false;
+		barInit();
 		
 		// setup layout
-		QBoxLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::LeftToRight, framesize_, 0);
+		QBoxLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::TopToBottom, framesize_, 0);
 		mainlayout->setResizeMode(QLayout::FreeResize);
+		mainlayout->addSpacing(bar->height()-framesize_+3);
 		mainlayout->addWidget(
-				new QLabel(i18n(fitzLabel),
-				widget()), 1,1
+				new QLabel(i18n(fitzLabel),	widget())
 		);
+		//widget()->addWidget(bar);
+		resizeBar();
 	} else {
-		dialog = (type != NET::Normal);
+		dialogType = dialog = (type != NET::Normal);
+		barInit();
 
+		//we don't want to reparent until the window exists and qt has started
+		//processing the event loop
 		QTimer::singleShot(0,this,SLOT(reparent()));
 	}
 	
-	barInit();
+	slow = false;
 
 	// setup titlebar buttons
 	addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
@@ -122,13 +126,13 @@ void Client::init() {
 }
 
 void Client::barInit() {
-	bar = new QWidget(widget(), "button bar", isPreview()?(WType_TopLevel | WX11BypassWM):0);
+	bar = new QWidget(widget(), "button bar", 0);
 	reparented = false;
 
 	bar->setBackgroundMode(NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
 	
-	box = new QBoxLayout ( bar, QBoxLayout::LeftToRight, 2, 0, "Fitz::Bar Layout");
+	box = new QBoxLayout(bar, QBoxLayout::LeftToRight, 2, 0, "Fitz::Bar Layout");
 
 	// setup titlebar buttons
 	for (int n=0; n<BtnType::COUNT; n++) {
@@ -148,7 +152,7 @@ void Client::barInit() {
 	bar->installEventFilter(this);
 
 	if(isPreview())
-		bar->setMask(QRegion());
+		bar->clearMask();
 	else
 		reparented=true;
 }
@@ -315,7 +319,11 @@ void Client::captionChange() {
 	//make the string shorter - remove everything after " - "
 	QString file(caption());
 	file.truncate(file.find(" - "));
-	kdDebug()<<"Client::captionChange("<<file<<")"<<endl;
+	if(file.length() > 50) {
+		file.truncate(50);
+		file+= "...";
+	}
+	//kdDebug()<<"Client::captionChange("<<file<<")"<<endl;
 
 	//change the font
 	QFont font = options()->font();
@@ -345,6 +353,7 @@ void Client::captionChange() {
 	p.setPen(fg);
 	p.setFont(font);
 	p.fillRect(0,0,width,BTN_HEIGHT,bg);
+	p.shear(0,.4);
 	//p.shear(0,.5);
 	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
 	p.end();
@@ -422,8 +431,9 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
 	//kdDebug()<<"Client::resize() : "<<caption()<<endl;
-	if( (size.width()<500 && !dialog) ||
-		(size.width()>600 && dialog)) 
+	int width = size.width()-bar->width();
+	if( (width<300 && !dialog) ||
+		(width>400 && dialog && !dialogType)) 
 	{
 		dialog=!dialog;
 		
@@ -437,8 +447,8 @@ void Client::resize(const QSize &size) {
 		resizeBar();
 		
 		//make the tab apear above the window if possible
-		int h = 0;
-		/*QRect geom = geometry();
+		/*int h = 0;
+		QRect geom = geometry();
 		QSize s(size);
 		if(geom.y() != 0) {
 			h = dialog ? headHeight()-1 : -headHeight()+1;
@@ -469,8 +479,12 @@ int Client::headWidth() const {
 
 QRect Client::frameGeom() const {
 	QRect frame = widget()->geometry();
-	if(dialog)
+	if(isPreview()) {
+		frame.moveTop(0);
+		frame.moveLeft(0);
+	} else if(dialog) {
 		frame.setTop(headHeight()-1);
+	}
 	return frame;
 }
 
@@ -519,15 +533,13 @@ void Client::resizeBar() {
 		);
 	}
 	
+	bar->setMask(corners);
 	reposition();
-
-	if(reparented)
-		bar->setMask(corners);
 }
 
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
-	return QSize(bar->width()+framesize_*2+20, framesize_*2+20);
+	return QSize(bar->width()-framesize_*2, bar->height());
 }
 
 // Window is being resized
@@ -538,6 +550,7 @@ void Client::resizeEvent(QResizeEvent *)  {
 
 //moves the bar to the correct location
 void Client::reposition() {
+	//kdDebug()<<"Client::reposition() : "<<caption()<<endl;
 	if(width() == 0) return;
 
 	int x=width()-bar->width();
@@ -599,6 +612,9 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		wheelEvent( static_cast< QWheelEvent* >( e ));
 		return true;
 		
+	  case QEvent::Enter:
+		mouseEnterEvent(static_cast<QMouseEvent *>(e));
+		return true;
 	  case QEvent::Leave:
 		mouseLeaveEvent(static_cast<QMouseEvent *>(e));
 		return true;
@@ -658,7 +674,7 @@ bool Client::barEventFilter(QObject *obj, QEvent *e) {
 		break;
 			
 	  case QEvent::Paint:
-		//barPaintEvent(static_cast<QPaintEvent *>(e));
+		barPaintEvent(static_cast<QPaintEvent *>(e));
 		return true;
 
 	  default:
@@ -750,7 +766,10 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 			willMove=true;
 		}
 		if(y<framesize_) { //top
-			y=framesize_+6;
+			if( x > w - bar->width() )
+				y=6;
+			else
+				y=framesize_+6;
 			willMove=true;
 		} else if((h-y)<=framesize_) {//bottom
 			y=h-framesize_-6;
@@ -770,7 +789,29 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 	}
 }
 
-void Client::mouseLeaveEvent(QMouseEvent *) {
+void Client::mouseEnterEvent(QMouseEvent *e) {
+	//kdDebug()<<"Client::mouseEnterEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	if(slow || isPreview()) return;
+	
+	Display* disp = bar->x11Display();
+		
+	accel_denom = 0; thresh = -1;
+	XGetPointerControl(disp, &accel_num, &accel_denom, &thresh);
+	do_accel = (accel_denom != 0);
+	do_thresh = (thresh != -1);
+	slow = true;
+	
+	XChangePointerControl(disp, 1, 0, 1, 2, 0);
+}
+
+void Client::mouseLeaveEvent(QMouseEvent *e) {
+	//kdDebug()<<"Client::mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	unless(slow) return;
+	
+	Display* disp = bar->x11Display();
+	XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
+	slow = false;
+	
 	if(event!=0) {
 		processMousePressEvent(event);
 		delete event;
@@ -800,6 +841,7 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
+	//kdDebug()<<"Client::paintEvent() : "<<caption()<<endl;
 
 	QColorGroup group;
 	QPainter painter(widget());
@@ -829,14 +871,20 @@ void Client::paintEvent(QPaintEvent* e) {
 		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
 		painter.fillRect(frame, bg.light(120));
 	}
+
+	if(isPreview()) {
+		frame.setBottom(bar->height());
+		painter.fillRect(frame, widget()->paletteBackgroundColor());
+	}
+	
 	//avoid flicker by drawing bar now instead of waiting for event loop to send
-	//paintEvent to bar
+	//paintEvent to bar. this results in two calls to barPaint for every paintEvent. Ohh well.
 	barPaintEvent(e);
 }
 
 
 void Client::barPaintEvent(QPaintEvent*) {
-	//kdDebug()<<"Client::barPaintEvent() : "<<caption()<<endl;
+	//kdDebug()<<"Client::barPaintEvent() : "<<caption()<<bar->geometry()<<endl;
 	unless(fitzFactoryInitialized()) return;
 	
 	QColorGroup group;

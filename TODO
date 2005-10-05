@@ -1,9 +1,3 @@
-0.3:
-handle dialogs nicely
-play nice with the gimp
-support for window shading
-make the border resizeable
-
 0.4 or later:
 wider buttons
 	easier to click according to Fitt's Law
