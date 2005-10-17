@@ -60,8 +60,13 @@ Client::Client(KDecorationBridge *b, KDecorationFactory *f)
 	: KDecoration(b, f), event(0) { ; }
 
 Client::~Client() {
+	//kdDebug()<<"Client::dtor()"<<endl;
 	for (int n=0; n<BtnType::COUNT; n++) {
 		if (button[n]) delete button[n];
+	}
+	if(slow) {
+		Display* disp = bar->x11Display();
+		XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
 	}
 	//???
 	//delete titleBar;
@@ -353,8 +358,6 @@ void Client::captionChange() {
 	p.setPen(fg);
 	p.setFont(font);
 	p.fillRect(0,0,width,BTN_HEIGHT,bg);
-	p.shear(0,.4);
-	//p.shear(0,.5);
 	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
 	p.end();
 	
@@ -612,9 +615,6 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		wheelEvent( static_cast< QWheelEvent* >( e ));
 		return true;
 		
-	  case QEvent::Enter:
-		mouseEnterEvent(static_cast<QMouseEvent *>(e));
-		return true;
 	  case QEvent::Leave:
 		mouseLeaveEvent(static_cast<QMouseEvent *>(e));
 		return true;
@@ -643,12 +643,31 @@ bool Client::barEventFilter(QObject *obj, QEvent *e) {
 	QMouseEvent *me;
 	QWheelEvent *we;
 	QEvent *event;
+	Display* disp = bar->x11Display();
 	
 	switch (e->type()) {
+	  case QEvent::Leave:
+		unless(slow) goto forward;
+		
+		XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
+		slow = false;
+		goto forward;
+		
+	  case QEvent::Enter:
+		if(slow || isPreview()) goto forward;
+		
+		accel_denom = 0; thresh = -1;
+		XGetPointerControl(disp, &accel_num, &accel_denom, &thresh);
+		do_accel = (accel_denom != 0);
+		do_thresh = (thresh != -1);
+		slow = true;
+		
+		XChangePointerControl(disp, 1, 0, 1, 2, 0);
+		goto forward;
+		  
+	  forward:
 	  case QEvent::MouseButtonPress:
 	  case QEvent::MouseButtonRelease:
-	  case QEvent::Leave:
-	  case QEvent::Enter:
 	  case QEvent::MouseMove:
 	  case QEvent::MouseButtonDblClick:
 		me = static_cast<QMouseEvent *>(e);
@@ -789,28 +808,8 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 	}
 }
 
-void Client::mouseEnterEvent(QMouseEvent *e) {
-	//kdDebug()<<"Client::mouseEnterEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
-	if(slow || isPreview()) return;
-	
-	Display* disp = bar->x11Display();
-		
-	accel_denom = 0; thresh = -1;
-	XGetPointerControl(disp, &accel_num, &accel_denom, &thresh);
-	do_accel = (accel_denom != 0);
-	do_thresh = (thresh != -1);
-	slow = true;
-	
-	XChangePointerControl(disp, 1, 0, 1, 2, 0);
-}
-
 void Client::mouseLeaveEvent(QMouseEvent *e) {
 	//kdDebug()<<"Client::mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
-	unless(slow) return;
-	
-	Display* disp = bar->x11Display();
-	XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
-	slow = false;
 	
 	if(event!=0) {
 		processMousePressEvent(event);

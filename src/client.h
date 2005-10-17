@@ -73,7 +73,6 @@ class Client : public KDecoration {
 	void mousePressEvent(QMouseEvent *);
 	void mouseReleaseEvent(QMouseEvent *);
 	void mouseLeaveEvent(QMouseEvent *);
-	void mouseEnterEvent(QMouseEvent *);
 	void mouseDoubleClickEvent(QMouseEvent *e);
 	void wheelEvent(QWheelEvent *e);
 

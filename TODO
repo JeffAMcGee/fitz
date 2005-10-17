@@ -1,7 +1,15 @@
-0.4 or later:
-wider buttons
-	easier to click according to Fitt's Law
-make the frame and the button bar different colors ???
+0.4:
+make dialog titlebar smaller on small windows -- the minimum size is too large
+	for dialog windows
+de-uglify it
+	allow user to choose buttons from crystal (???)
+	use xcomposite to blend with application underneath
+figure out where the menubar ends
+
+future: (these may never happen)
+make the frame and the button bar different colors
 allow fitz style click on non-maximized windows
 	Trap the mouse inside a window until the user taps the edge twice. This
 	must be off by default.
+de-accellerate mouse on menubar
+1 pixel borders on top of window
