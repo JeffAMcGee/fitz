@@ -1,3 +1,13 @@
+2005-10-22  Jeff McGee <JeffAMcGee@gmail.com>
+
+	* added special titlebars for dialogs
+	* slow down mouse over titlebar
+	* the window border can be resized
+	* slightly larger buttons
+	* added window shading
+	* the window border is a little lighter
+	* removed reverse italicized titlebar since it's too hard to read
+
 2005-07-11  Jeff McGee <JeffAMcGee@gmail.com>
 
 	* added title -- whoop!

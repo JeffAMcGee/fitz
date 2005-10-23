@@ -8,20 +8,11 @@ something there, Fitz will cover it up, which will look bad and may hurt
 functionality.
 
 applications that use their top-right corner:
-gimp - All sorts of stuff (I currently switch decorations to use the gimp)
 firefox - the about firefox button
-konsole - some programs (including lynx) use that corner of the console if the
-		menu is off
+konsole - some programs (including lynx) use that corner of the console.  This
+	is only a prolbem if the menu is off
 old-school X programs that put the help menu on the right side.  It's been
-		several years since I've seen one of these.
-
-Dialog titlebars will fix the gimp problem.
-
-/*=== Shade ==================================================================*/
-At the moment, shade makes no sense for this style.  As a result, the shade
-button currently lowers the window.  The Right Way to shade for this style is
-to make a shaded window use the dialog style title bar, but the dialog style
-title bar is in the TODO list.
+	several years since I've seen one of these on Linux.
 
 /*=== Border Color ===========================================================*/
 In this style, the frame, buttons, and title bar are all kind of the same thing
@@ -32,10 +23,4 @@ colors for the button bar and make the frame a different color.
 On two occasions during the past few weeks my mouse suddenly stopped working.
 Moving worked, but clicking didn't.  Stoping X and then starting it again did
 not fix the problem, so I don't see how Fitz could have don that, but I'm not
-completely sure.
-
-/*============================================================================*/
-open gvim
-cd fitz/src
-:e .
-the title bar goes to the wrong place
+completely sure. Update: this hasn't happened since around may or june of 2005.
