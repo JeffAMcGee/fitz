@@ -11,18 +11,18 @@
 # This script dowloads fitz from cvs, makes a tarball for release, and then
 # tests it.  The chance that this script works on someone else's computer is
 # negligible.  You're going to need to edit it some.
-ver:=0.2
-tag:=fitz-0_2
+ver:=0.3
+tag:=fitz-0_3
 pkg:=fitz-$(ver)
 tbz:=$(pkg).tar.bz2
 deb:=fitz_$(ver)-1_i386.deb
 
 unexport UNSERMAKE
 
-.PHONY: all co tar deb tartest debtest test put clean
+.PHONY: all co tar deb ubu tartest debtest ubutest test put clean
 
-all: clean co tar deb
-test: debtest tartest
+all: clean co tar deb ubu
+test: debtest tartest ubutest
 
 co: 
 	#download and clean fitz
@@ -30,7 +30,7 @@ co:
 	#cvs -z3 -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz co -P fitz
 	cvs -z3 -d:ext:nerd4christ@cvs.sourceforge.net:/cvsroot/fitz export -r $(tag) -d $(pkg) fitz
 	cd $(pkg) && make -f Makefile.cvs
-	cd $(pkg) && rm -rf supermake kwintheme.html supermake release Makefile.cvs testfitz design.png templates autom4te.cache
+	cd $(pkg) && rm -rf supermake kwintheme.html release Makefile.cvs testfitz design.png templates autom4te.cache
 
 tar:
 	#make the tarball
@@ -38,9 +38,15 @@ tar:
 	md5sum $(tbz) > $(tbz).md5
 
 deb:
+	echo -e '\n\tDid you remember to update the Debian changelog?\n'
 	sudo chroot /var/deb/ su jeff -c '\
 		cd /release-fitz/$(pkg) && \
 		dpkg-buildpackage -rfakeroot'
+	mv fitz_$(ver)-1* deb/
+
+ubu:
+	cd $(pkg) && dpkg-buildpackage -rfakeroot
+	mv fitz_$(ver)-1* ubu/
 
 tartest:
 	#test build
@@ -60,7 +66,13 @@ debtest:
 	sudo chroot /var/deb/ sh -c '\
 		cd /release-fitz/ ;\
 		dpkg -r fitz ;\
-		dpkg -i $(deb)'
+		dpkg -i deb/$(deb)'
+
+ubutest:
+	sudo sh -c '\
+		cd /release-fitz/ ;\
+		dpkg -r fitz ;\
+		dpkg -i ubu/$(deb)'
 	
 put:
 	#upload it
