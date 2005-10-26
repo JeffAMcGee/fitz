@@ -470,39 +470,6 @@ void Client::resize(const QSize &size) {
 	resizeTitleBar();
 }
 
-void Client::resizeTitleBar() {
-	btnsWidth += hiddenTitleWidth;
-	int newHTW = btnsWidth +headWidth() -2 -widget()->width();
-
-	if(newHTW >0) {
-		hiddenTitleWidth = newHTW;
-		btnsWidth -= hiddenTitleWidth;
-	} else if(hiddenTitleWidth) {
-		hiddenTitleWidth = 0;
-	}
-	resizeBar();
-}
-
-int Client::headHeight() const {
-	return BTN_HEIGHT+5-framesize_;
-}
-
-int Client::headWidth() const {
-	int h = BTN_HEIGHT+5-framesize_;
-	return dialog ? (h*2-1) : (h+1)/2 ; 
-}
-
-QRect Client::frameGeom() const {
-	QRect frame = widget()->geometry();
-	if(isPreview()) {
-		frame.moveTop(0);
-		frame.moveLeft(0);
-	} else if(dialog) {
-		frame.setTop(headHeight()-1);
-	}
-	return frame;
-}
-
 void Client::resizeBar() {
 	//kdDebug()<<"Client::resizeBar() : "<<caption()<<endl;
 	
@@ -552,16 +519,6 @@ void Client::resizeBar() {
 	reposition();
 }
 
-// Return the minimum allowable size for this decoration
-QSize Client::minimumSize() const {
-	return QSize(bar->width()-titleBar->width()+hiddenTitleWidth, bar->height());
-}
-
-// Window is being resized
-void Client::resizeEvent(QResizeEvent *)  {
-	//kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
-}
-
 //moves the bar to the correct location
 void Client::reposition() {
 	//kdDebug()<<"Client::reposition() : "<<caption()<<endl;
@@ -575,6 +532,44 @@ void Client::reposition() {
 		mask+=QRegion(frameGeom());
 		setMask(mask);
 	}
+}
+
+void Client::resizeTitleBar() {
+	btnsWidth += hiddenTitleWidth;
+	int newHTW = btnsWidth +headWidth() -2 -widget()->width();
+
+	if(newHTW >0) {
+		hiddenTitleWidth = newHTW;
+		btnsWidth -= hiddenTitleWidth;
+	} else if(hiddenTitleWidth) {
+		hiddenTitleWidth = 0;
+	}
+	resizeBar();
+}
+
+int Client::headHeight() const {
+	return BTN_HEIGHT+5-framesize_;
+}
+
+int Client::headWidth() const {
+	int h = BTN_HEIGHT+5-framesize_;
+	return dialog ? (h*2-1) : (h+1)/2 ; 
+}
+
+QRect Client::frameGeom() const {
+	QRect frame = widget()->geometry();
+	if(isPreview()) {
+		frame.moveTop(0);
+		frame.moveLeft(0);
+	} else if(dialog) {
+		frame.setTop(headHeight()-1);
+	}
+	return frame;
+}
+
+// Return the minimum allowable size for this decoration
+QSize Client::minimumSize() const {
+	return QSize(bar->width()-titleBar->width()+hiddenTitleWidth, bar->height());
 }
 
 void Client::setBorderSize(BorderSize b) {
@@ -630,9 +625,6 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return true;
 	  case QEvent::Paint:
 		paintEvent(static_cast<QPaintEvent *>(e));
-		return true;
-	  case QEvent::Resize:
-		resizeEvent(static_cast<QResizeEvent *>(e));
 		return true;
 	  case QEvent::Show:
 		showEvent(static_cast<QShowEvent *>(e));

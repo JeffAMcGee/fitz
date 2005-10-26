@@ -80,7 +80,6 @@ class Client : public KDecoration {
 	void moveEvent(QMoveEvent *);
 	void paintEvent(QPaintEvent *e);
 	void barPaintEvent(QPaintEvent *e);
-	void resizeEvent(QResizeEvent *);
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
 	
