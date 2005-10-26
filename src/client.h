@@ -100,6 +100,7 @@ class Client : public KDecoration {
 	bool dialog;
 	bool dialogType;
 	int btnsWidth;
+	int hiddenTitleWidth;
 	QPointArray corners;
 	QRect head;
 	QRect tail;

@@ -77,10 +77,7 @@ const char *const  fitzLabel =
 "<b><center>Fitz preview</center></b><br />"
 
 "<p><center>Warning: Fitz may work poorly with some programs.  See BUGS for "
-"details.</center></p><br />"
-
-"<p><center>If you click on the frame of a maximized window, the mouse will "
-"jump.  You can click this frame for a demonstration.<center></p>";
+"details.</center></p><br />";
 
 int Client::framesize_ = 3;
 
@@ -105,7 +102,7 @@ void Client::init() {
 		// setup layout
 		QBoxLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::TopToBottom, framesize_, 0);
 		mainlayout->setResizeMode(QLayout::FreeResize);
-		mainlayout->addSpacing(bar->height()-framesize_+3);
+		mainlayout->addSpacing(bar->height()-framesize_+4);
 		mainlayout->addWidget(
 				new QLabel(i18n(fitzLabel),	widget())
 		);
@@ -133,6 +130,7 @@ void Client::init() {
 void Client::barInit() {
 	bar = new QWidget(widget(), "button bar", 0);
 	reparented = false;
+	hiddenTitleWidth = 0;
 
 	bar->setBackgroundMode(NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
@@ -469,6 +467,20 @@ void Client::resize(const QSize &size) {
 		}
 	}
 	widget()->resize(size);
+	if(dialog) {
+		btnsWidth += hiddenTitleWidth;
+
+		if(size.width() >= bar->width() + hiddenTitleWidth) {
+			if(hiddenTitleWidth) {
+				hiddenTitleWidth = 0;
+				resizeBar();
+			}
+		} else {
+			hiddenTitleWidth = btnsWidth +headWidth() -2 -size.width();
+			btnsWidth -= hiddenTitleWidth;
+			resizeBar();
+		}
+	}
 }
 
 int Client::headHeight() const {
@@ -542,7 +554,7 @@ void Client::resizeBar() {
 
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
-	return QSize(bar->width()-framesize_*2, bar->height());
+	return QSize(bar->width()-titleBar->width()+hiddenTitleWidth, bar->height());
 }
 
 // Window is being resized
@@ -555,7 +567,6 @@ void Client::resizeEvent(QResizeEvent *)  {
 void Client::reposition() {
 	//kdDebug()<<"Client::reposition() : "<<caption()<<endl;
 	if(width() == 0) return;
-
 	int x=width()-bar->width();
 	bar->move(x,0);
 	
@@ -808,7 +819,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 	}
 }
 
-void Client::mouseLeaveEvent(QMouseEvent *e) {
+void Client::mouseLeaveEvent(QMouseEvent * /*e*/) {
 	//kdDebug()<<"Client::mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	
 	if(event!=0) {
@@ -906,6 +917,10 @@ void Client::barPaintEvent(QPaintEvent*) {
 			tail.right(), tail.bottom()-1
 		);
 		
+		if(bar->x() < framesize_-1) {
+			line.setPoint(0,framesize_-bar->x()-1,tail.top()-1);
+		}
+		
 		painter.setPen(group.background().dark(130));
 		painter.drawPolyline(line);
 		
@@ -919,6 +934,10 @@ void Client::barPaintEvent(QPaintEvent*) {
 		
 		painter.setPen(group.background().dark(150));
 		painter.drawPolyline(line);
+		
+		if(bar->x() == 0) {
+			painter.drawLine(0,head.bottom(),0,tail.top()-1);
+		}
 	} else {
 		line.putPoints(0,4,corners,1);
 		line.translate(0,-1);
@@ -927,7 +946,10 @@ void Client::barPaintEvent(QPaintEvent*) {
 	}
 	
 	QPoint origin = titleSpace->geometry().topLeft();
-	painter.drawPixmap(origin,*titleBar);
+	painter.drawPixmap(
+		origin.x(), origin.y(), *titleBar, 0, 0,
+		titleBar->width()-hiddenTitleWidth, -1
+	);
 }
 
 // Window is being shown
