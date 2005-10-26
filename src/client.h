@@ -47,6 +47,7 @@ class Client : public KDecoration {
 	void reposition();
 	virtual void resize(const QSize &size);
 	virtual void resizeBar();
+	virtual void resizeTitleBar();
 	virtual QSize minimumSize() const;
 	virtual Position mousePosition(const QPoint &point) const;
 	

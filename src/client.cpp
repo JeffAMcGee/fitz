@@ -107,7 +107,6 @@ void Client::init() {
 				new QLabel(i18n(fitzLabel),	widget())
 		);
 		//widget()->addWidget(bar);
-		resizeBar();
 	} else {
 		dialogType = dialog = (type != NET::Normal);
 		barInit();
@@ -121,6 +120,9 @@ void Client::init() {
 
 	// setup titlebar buttons
 	addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
+		
+	if(isPreview())
+		resizeBar();
 
 	//maximize the window if appropriate
 	if(Factory::autoMax() && type == NET::Normal)
@@ -265,7 +267,6 @@ void Client::addButtons(const QString& s) {
 			break;
 		}
 	}
-	resizeBar();
 }
 
 // Add a generic button to title layout (called by addButtons() )
@@ -343,8 +344,7 @@ void Client::captionChange() {
 	titleBar->resize(width,BTN_HEIGHT);
 	
 	//force repaint even if resize was a nop
-	if(width==oldWidth)
-		bar->update();
+	bar->update();
 	
 	//read in colors
 	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
@@ -360,7 +360,7 @@ void Client::captionChange() {
 	p.end();
 	
 	if(oldWidth) {
-		resizeBar();
+		resizeTitleBar();
 	}
 }
 
@@ -467,20 +467,20 @@ void Client::resize(const QSize &size) {
 		}
 	}
 	widget()->resize(size);
-	if(dialog) {
-		btnsWidth += hiddenTitleWidth;
+	resizeTitleBar();
+}
 
-		if(size.width() >= bar->width() + hiddenTitleWidth) {
-			if(hiddenTitleWidth) {
-				hiddenTitleWidth = 0;
-				resizeBar();
-			}
-		} else {
-			hiddenTitleWidth = btnsWidth +headWidth() -2 -size.width();
-			btnsWidth -= hiddenTitleWidth;
-			resizeBar();
-		}
+void Client::resizeTitleBar() {
+	btnsWidth += hiddenTitleWidth;
+	int newHTW = btnsWidth +headWidth() -2 -widget()->width();
+
+	if(newHTW >0) {
+		hiddenTitleWidth = newHTW;
+		btnsWidth -= hiddenTitleWidth;
+	} else if(hiddenTitleWidth) {
+		hiddenTitleWidth = 0;
 	}
+	resizeBar();
 }
 
 int Client::headHeight() const {
@@ -560,7 +560,6 @@ QSize Client::minimumSize() const {
 // Window is being resized
 void Client::resizeEvent(QResizeEvent *)  {
 	//kdDebug()<<"Client::resizeEvent() : "<<caption()<<endl;
-	reposition();
 }
 
 //moves the bar to the correct location
@@ -588,7 +587,7 @@ void Client::setBorderSize(BorderSize b) {
 		break;
 	  case BorderLarge:
 		framesize_ = 6;
-		break;
+		break!;
 	  case BorderVeryLarge:
 		framesize_ = 10;
 		break;
