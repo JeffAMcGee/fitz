@@ -274,8 +274,9 @@ void Client::addButton(BtnType::Type b, const char *name,
 		const char* signal, const char* slot)
 {
 	unless(button[b]) {
-		button[b] = new Button(bar, name, this, b);
+		button[b] = new Button(bar, name, this, b, isActive());
 		connect(button[b], signal, this, slot);
+		connect(this, SIGNAL(activeChanged(bool)), button[b], SLOT(setActive(bool)));
 		box->addWidget (button[b],0,Qt::AlignTop);
 		btnsWidth+=BTN_WIDTH;
 	}
@@ -303,6 +304,7 @@ void Client::maximizeFull() {
 
 // window active state has changed
 void Client::activeChange() {
+	emit activeChanged(isActive());
 	widget()->repaint(false);
 }
 
@@ -320,6 +322,19 @@ void Client::iconChange() { ; }
 
 // The title has changed
 void Client::captionChange() {
+	int oldWidth = titleBar->width();
+	int width = redrawTitle();
+	btnsWidth+=width-oldWidth;
+	
+	//force repaint even if resize was a nop
+	bar->update();
+	
+	if(oldWidth) {
+		resizeTitleBar();
+	}
+}
+
+int Client::redrawTitle() {
 	//make the string shorter - remove everything after " - "
 	QString file(caption());
 	file.truncate(file.find(" - "));
@@ -327,7 +342,6 @@ void Client::captionChange() {
 		file.truncate(50);
 		file+= "...";
 	}
-	//kdDebug()<<"Client::captionChange("<<file<<")"<<endl;
 
 	//change the font
 	QFont font = options()->font();
@@ -336,32 +350,20 @@ void Client::captionChange() {
 	font.setWeight(QFont::DemiBold);
 	font.setStretch(130);
 	
-	//figure out the width
 	QFontMetrics fm(font);
 	int width = fm.width(file) + BTN_WIDTH/2;
-	int oldWidth = titleBar->width();
-	btnsWidth+=width-oldWidth;
 	titleBar->resize(width,BTN_HEIGHT);
-	
-	//force repaint even if resize was a nop
-	bar->update();
-	
-	//read in colors
-	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
-	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
 	
 	//make the bitmap for the caption
 	QPainter p;
 	p.begin(titleBar);
-	p.setPen(fg);
+	p.setPen(fgc);
 	p.setFont(font);
-	p.fillRect(0,0,width,BTN_HEIGHT,bg);
+	p.fillRect(0,0,width,BTN_HEIGHT,bgc);
 	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
 	p.end();
 	
-	if(oldWidth) {
-		resizeTitleBar();
-	}
+	return width;
 }
 
 // Maximized state has changed
@@ -582,7 +584,7 @@ void Client::setBorderSize(BorderSize b) {
 		break;
 	  case BorderLarge:
 		framesize_ = 6;
-		break!;
+		break;
 	  case BorderVeryLarge:
 		framesize_ = 10;
 		break;
@@ -844,24 +846,26 @@ void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
 	//kdDebug()<<"Client::paintEvent() : "<<caption()<<endl;
 
-	QColorGroup group;
+	//check for color change
+	QColor fg=KDecoration::options()->color(KDecoration::ColorFont,isActive());
+	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar,isActive());
+	if(bg!=bgc || fg!=fgc) {
+		fgc=fg;
+		bgc=bg;
+		redrawTitle();
+	}
+	
 	QPainter painter(widget());
-
-	// draw frame
-	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
-	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
-	
-	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
-	
 	QRect frame = frameGeom();
 
+	// draw frame
 	for(int i=0; i<framesize_; i++) {
 		if(i==0)
-			painter.setPen(bg.dark(150));
+			painter.setPen(bgc.dark(150));
 		else if(i==framesize_-1)
-			painter.setPen(bg.dark(130));
+			painter.setPen(bgc.dark(130));
 		else if(i==1)
-			painter.setPen(bg);
+			painter.setPen(bgc);
 
 		painter.drawRect(frame);
 		frame.addCoords(1,1,-1,-1);
@@ -870,7 +874,7 @@ void Client::paintEvent(QPaintEvent* e) {
 	//fill in empty space
 	if(isSetShade()) {
 		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
-		painter.fillRect(frame, bg.light(120));
+		painter.fillRect(frame, bgc.light(120));
 	}
 
 	if(isPreview()) {
@@ -888,14 +892,11 @@ void Client::barPaintEvent(QPaintEvent*) {
 	//kdDebug()<<"Client::barPaintEvent() : "<<caption()<<bar->geometry()<<endl;
 	unless(fitzFactoryInitialized()) return;
 	
-	QColorGroup group;
-	group = options()->colorGroup(KDecoration::ColorTitleBar, true);
-	
 	QPainter painter(bar);
 	
 	//fill in the empty space
-	painter.setPen(group.background());
-	painter.setBrush(group.background());
+	painter.setPen(bgc);
+	painter.setBrush(bgc);
 	painter.drawPolygon(corners);
 
 	QPointArray line;
@@ -912,7 +913,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 			line.setPoint(0,framesize_-bar->x()-1,tail.top()-1);
 		}
 		
-		painter.setPen(group.background().dark(130));
+		painter.setPen(bgc.dark(130));
 		painter.drawPolyline(line);
 		
 		line.putPoints(
@@ -923,7 +924,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 			head.left(), head.bottom()
 		);
 		
-		painter.setPen(group.background().dark(150));
+		painter.setPen(bgc.dark(150));
 		painter.drawPolyline(line);
 		
 		if(bar->x() == 0) {
@@ -932,7 +933,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 	} else {
 		line.putPoints(0,4,corners,1);
 		line.translate(0,-1);
-		painter.setPen(group.background().dark(130));
+		painter.setPen(bgc.dark(130));
 		painter.drawPolyline(line);
 	}
 	

@@ -31,14 +31,14 @@ namespace Fitz {
 
 // Constructor
 Button::Button(QWidget *parent, const char *name,
-		KDecoration* c, BtnType::Type t)
+		KDecoration* c, BtnType::Type t, bool act)
 	: QButton(parent, name), type(t),
 		deco(0), lastmouse(0), client(c), state(0)
 {
 	setBackgroundMode(NoBackground);
 	setFixedSize(BTN_WIDTH, BTN_HEIGHT);
 	setCursor(arrowCursor);
-	setPixmap(0);
+	setPixmap(0,act);
 	QToolTip::add(this, i18n(name));
 }
 
@@ -52,14 +52,23 @@ void Button::toggle() {
 }
 
 void Button::setPixmap(bool b) {
-	setPixmap(int(b));
+	setPixmap(int(b),active);
+}
+
+void Button::setPixmap(int i) {
+	setPixmap(i,active);
+}
+
+void Button::setActive(bool act) {
+	setPixmap(state,act);
 }
 
 // Set the button decoration
-void Button::setPixmap(int i) {
+void Button::setPixmap(int i, bool act) {
 	Factory *f=static_cast<Factory*>(client->factory());
-	deco=f->getPixmap(type,i);
 	state=i;
+	active=act;
+	deco=f->getPixmap(type,act,i);
 	repaint(false);
 }
 
@@ -110,16 +119,6 @@ void Button::mouseReleaseEvent(QMouseEvent* e) {
 // Draw the button
 void Button::drawButton(QPainter *painter) {
 	unless(fitzFactoryInitialized()) return;
-
-	QColorGroup group;
-	
-	// paint a plain box with border
-	group = KDecoration::options()->
-		colorGroup(KDecoration::ColorButtonBg, client->isActive());
-	painter->fillRect(rect(), group.button());
-	/*painter->setPen(group.dark());
-	painter->drawRect(rect());*/
-
 	painter->drawPixmap(0,0, *deco);
 }
 

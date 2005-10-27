@@ -52,8 +52,11 @@ class Client : public KDecoration {
 	virtual Position mousePosition(const QPoint &point) const;
 	
 	void addButtons(const QString& buttons);
-
 	static void setBorderSize(BorderSize b);
+	
+  signals:
+	void activeChanged(bool act);
+
   private slots:
 	virtual void maximizeFull();
 	virtual void reparent();
@@ -65,6 +68,7 @@ class Client : public KDecoration {
 	void barInit();
 	bool eventFilter(QObject *obj, QEvent *e);
 	bool barEventFilter(QObject *obj, QEvent *e);
+	int redrawTitle();
 	
 	void addButton(BtnType::Type b, const char *name,
 			const char* signal, const char* slot);
@@ -107,7 +111,10 @@ class Client : public KDecoration {
 	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
+	QColor bgc;
+	QColor fgc;
 	static int framesize_;
+	
 	
 	//for gravity
 	bool do_accel;

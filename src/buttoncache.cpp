@@ -52,32 +52,33 @@ ButtonCache::~ButtonCache() {
 
 void ButtonCache::makePixmaps(){
 	QPixmap btnsPic;
+	kdDebug() <<"ButtonCache::makePixmaps()"<<endl;
 
-	QColor fg=KDecoration::options()->color(KDecoration::ColorFont);
-	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar);
-	
-	kdDebug() <<"ButtonCache::makePixmaps(...)"<<endl;
-	
-	#include "buttons.xpm"
-	QImage greyBtns(buttons_xpm);//load the image from #include
-	KImageEffect::flatten(greyBtns,fg,bg);//change the colors
-	btnsPic.convertFromImage(greyBtns);//convert to pixmap
+	for(int active=0;active<2;active++) {
+		QColor fg=KDecoration::options()->color(KDecoration::ColorFont, active);
+		QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar, active);
+		
+		#include "buttons.xpm"
+		QImage greyBtns(buttons_xpm);//load the image from #include
+		KImageEffect::flatten(greyBtns,fg,bg);//change the colors
+		btnsPic.convertFromImage(greyBtns);//convert to pixmap
 
-	//split to pixmaps
-	for(int i=0;i<IMG_COUNT;i++) {
-		btns[i].resize(BTN_WIDTH,BTN_HEIGHT);
-		bitBlt(
-			&(btns[i]), 0,0,
-			&btnsPic, 0,i*BTN_HEIGHT, BTN_WIDTH,BTN_HEIGHT
-		      );
+		//split to pixmaps
+		for(int i=0;i<IMG_COUNT;i++) {
+			btns[active][i].resize(BTN_WIDTH,BTN_HEIGHT);
+			bitBlt(
+				&(btns[active][i]), 0,0,
+				&btnsPic, 0,i*BTN_HEIGHT, BTN_WIDTH,BTN_HEIGHT
+			);
+		}
 	}
 	pixmapsMade=true;
 }
 
-const QPixmap* ButtonCache::getPixmap(BtnType::Type type, int state) {
+const QPixmap* ButtonCache::getPixmap(BtnType::Type type, bool active, int state) {
 	unless(pixmapsMade) makePixmaps();
 	int i = btnsLookup[type][state];
-	return &(btns[i]);
+	return &(btns[active][i]);
 }
 
 };

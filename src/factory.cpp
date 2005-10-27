@@ -120,8 +120,8 @@ bool Factory::supports( Ability ability ) {
 #endif	
 }
 
-const QPixmap* Factory::getPixmap(BtnType::Type t, int i) {
-	return cache->getPixmap(t,i);
+const QPixmap* Factory::getPixmap(BtnType::Type t, bool act, int i) {
+	return cache->getPixmap(t,act,i);
 }
 
 bool fitzFactoryInitialized() {

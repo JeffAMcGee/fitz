@@ -25,7 +25,7 @@ class Button : public QButton {
 	Q_OBJECT
 public:
 	Button(QWidget *parent, const char *name,
-			KDecoration* c, BtnType::Type type);
+			KDecoration* c, BtnType::Type type, bool act);
 	~Button();
 
 	QSize sizeHint() const;
@@ -34,6 +34,8 @@ public:
 public slots:
 	void setPixmap(int i);
 	void setPixmap(bool b);
+	void setPixmap(int i, bool act);
+	void setActive(bool act);
 	void toggle();
 signals:
 	void toggled(bool on);
@@ -50,6 +52,7 @@ private:
 	int lastmouse;
 	KDecoration *client;
 	int state;
+	bool active;
 };
 
 inline int Button::lastMousePress() const

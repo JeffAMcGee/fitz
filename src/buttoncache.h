@@ -26,10 +26,10 @@ class ButtonCache{
 	~ButtonCache();
 	
 	void makePixmaps();
-	const QPixmap* getPixmap(BtnType::Type type, int state);
+	const QPixmap* getPixmap(BtnType::Type type, bool active, int state);
   private:
 	enum {IMG_COUNT = 16};
-	QPixmap btns[IMG_COUNT];
+	QPixmap btns[2][IMG_COUNT];
 	bool pixmapsMade;
 };
 
