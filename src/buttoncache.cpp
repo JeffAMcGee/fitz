@@ -75,7 +75,7 @@ void ButtonCache::makePixmaps(){
 	pixmapsMade=true;
 }
 
-const QPixmap* ButtonCache::getPixmap(BtnType::Type type, bool active, int state) {
+const QPixmap* ButtonCache::getPixmap(BtnType::Type type, int state, bool active) {
 	unless(pixmapsMade) makePixmaps();
 	int i = btnsLookup[type][state];
 	return &(btns[active][i]);

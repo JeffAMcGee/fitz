@@ -68,7 +68,7 @@ void Button::setPixmap(int i, bool act) {
 	Factory *f=static_cast<Factory*>(client->factory());
 	state=i;
 	active=act;
-	deco=f->getPixmap(type,act,i);
+	deco=f->getPixmap(type,i,act);
 	repaint(false);
 }
 

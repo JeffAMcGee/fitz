@@ -37,7 +37,7 @@ class Factory: public QObject, public KDecorationFactory {
 
 	static bool autoMax();
 	
-	const QPixmap* getPixmap(BtnType::Type t, bool active, int i);
+	const QPixmap* getPixmap(BtnType::Type t, int i, bool active);
 	
   private:
 	bool readConfig();
