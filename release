@@ -77,7 +77,7 @@ ubutest:
 put:
 	#upload it
 	ncftpput -p \"\" upload.sourceforge.net /incoming $(tbz)
-	ncftpput -p \"\" upload.sourceforge.net /incoming $(deb)
+	ncftpput -p \"\" upload.sourceforge.net /incoming deb/$(deb)
 	#print instructions
 	@echo -e "\n\n> md5sum $(tbz)"
 	@cat $(tbz).md5
@@ -89,4 +89,4 @@ put:
 	> sudo make install\n'
 
 clean:
-	rm -rf fitz*
+	rm -rf fitz* ubu/* deb/*
