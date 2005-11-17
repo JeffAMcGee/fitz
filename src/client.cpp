@@ -100,7 +100,9 @@ void Client::init() {
 		barInit();
 		
 		// setup layout
-		QBoxLayout *mainlayout = new QBoxLayout(widget(),QBoxLayout::TopToBottom, framesize_, 0);
+		QBoxLayout *mainlayout = new QBoxLayout(
+			widget(), QBoxLayout::TopToBottom, framesize_, 0
+		);
 		mainlayout->setResizeMode(QLayout::FreeResize);
 		mainlayout->addSpacing(bar->height()-framesize_+4);
 		mainlayout->addWidget(
@@ -119,7 +121,10 @@ void Client::init() {
 	slow = false;
 
 	// setup titlebar buttons
-	addButtons(options()->titleButtonsLeft()+" "+options()->titleButtonsRight());
+	addButtons(
+		options()->titleButtonsLeft() + " " +
+		options()->titleButtonsRight()
+	);
 		
 	if(isPreview())
 		resizeBar();
@@ -156,10 +161,10 @@ void Client::barInit() {
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
 
-	if(isPreview())
+	if(isPreview()) {
 		bar->clearMask();
-	else
 		reparented=true;
+	}
 }
 
 //this function finds the parent window of the window decoration widget and
@@ -179,6 +184,7 @@ void Client::reparent() {
 	
 	XReparentWindow(disp, barWin, parent, bar->x(), 0);
 	reparented = true;
+	kdDebug()<<"reparent()"<<endl;
 	resizeBar();
 }
 
@@ -330,7 +336,8 @@ void Client::captionChange() {
 	bar->update();
 	
 	if(oldWidth) {
-		resizeTitleBar();
+		kdDebug()<<"captionChange()"<<endl;
+		resizeBar();
 	}
 }
 
@@ -433,51 +440,72 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	//kdDebug()<<"Client::resize() : "<<caption()<<endl;
-	int width = size.width()-bar->width();
-	if( (width<300 && !dialog) ||
-		(width>400 && dialog && !dialogType)) 
-	{
-		dialog=!dialog;
-		
-		if(!dialog)	clearMask();
-		headSpace->changeSize(
-			headWidth()-2,0,
-			QSizePolicy::Fixed,
-			QSizePolicy::Minimum
-		);
-		box->invalidate();
-		resizeBar();
-		
-		//make the tab apear above the window if possible
-		/*int h = 0;
-		QRect geom = geometry();
-		QSize s(size);
-		if(geom.y() != 0) {
-			h = dialog ? headHeight()-1 : -headHeight()+1;
-			s.setHeight(s.height()+h);
-		}*/
-		
-		//tell kwin about our change
-		if( !isSetShade() ) {
-			setShade(1);
-			widget()->resize(size);
-			//widget()->resize(s);
-			//if(h) widget()->move(geom.x(),geom.y()+h);
-			setShade(0);
-			return;
-		}
-	}
+	kdDebug()<<"resize()"<<endl;
 	widget()->resize(size);
-	resizeTitleBar();
+	resizeBar();
 }
 
 void Client::resizeBar() {
-	//kdDebug()<<"Client::resizeBar() : "<<caption()<<endl;
+	kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
+		<<bar->geometry()<<hiddenTitleWidth<<endl;
+
+	btnsWidth += hiddenTitleWidth;
+	int newWidth = width() -barWidth();
 	
+	if( (newWidth<300 && !dialog) ||
+		(newWidth>400 && dialog && !dialogType)) 
+	{
+		toggleDialog();
+		return;
+	}
+
+	if(newWidth <0) {
+		//explain this
+		hiddenTitleWidth = -newWidth;
+		btnsWidth -= hiddenTitleWidth;
+	} else if(hiddenTitleWidth) {
+		hiddenTitleWidth = 0;
+	}
+
+	makeCorners();
+	bar->setMask(corners);
+
+	int x = width() -barWidth();
+	//bar->move(hiddenTitleWidth?0:newWidth,0);
+	bar->move(x,0);
+	
+	if(dialog) {
+		QRegion mask(corners);
+		mask.translate(x,0);
+		mask+=QRegion(frameGeom());
+		setMask(mask);
+	}
+}
+
+void Client::toggleDialog() {
+	dialog=!dialog;
+	
+	if(!dialog)	clearMask();
+	headSpace->changeSize(
+		headWidth()-2,0,
+		QSizePolicy::Fixed,
+		QSizePolicy::Minimum
+	);
+	box->invalidate();
+	
+	//tell kwin about our change in borders()
+	if( !isSetShade() ) {
+		setShade(1);
+		setShade(0);
+		return;
+	}
+	return;
+}
+
+void Client::makeCorners() {
 	//Welcome to the land of magic constants.  I hope you enjoy your stay.
 	bar->setFixedSize(
-		btnsWidth+headWidth()-2,
+		barWidth(),
 		BTN_HEIGHT+tailHeight()+3
 	);
 	head = QRect(
@@ -516,37 +544,6 @@ void Client::resizeBar() {
 			bar->width()-1, 1
 		);
 	}
-	
-	bar->setMask(corners);
-	reposition();
-}
-
-//moves the bar to the correct location
-void Client::reposition() {
-	//kdDebug()<<"Client::reposition() : "<<caption()<<endl;
-	if(width() == 0) return;
-	int x=width()-bar->width();
-	bar->move(x,0);
-	
-	if(dialog) {
-		QRegion mask(corners);
-		mask.translate(x,0);
-		mask+=QRegion(frameGeom());
-		setMask(mask);
-	}
-}
-
-void Client::resizeTitleBar() {
-	btnsWidth += hiddenTitleWidth;
-	int newHTW = btnsWidth +headWidth() -2 -widget()->width();
-
-	if(newHTW >0) {
-		hiddenTitleWidth = newHTW;
-		btnsWidth -= hiddenTitleWidth;
-	} else if(hiddenTitleWidth) {
-		hiddenTitleWidth = 0;
-	}
-	resizeBar();
 }
 
 int Client::headHeight() const {
@@ -556,6 +553,10 @@ int Client::headHeight() const {
 int Client::headWidth() const {
 	int h = BTN_HEIGHT+5-framesize_;
 	return dialog ? (h*2-1) : (h+1)/2 ; 
+}
+
+int Client::barWidth() const {
+	return btnsWidth +headWidth() -2;
 }
 
 QRect Client::frameGeom() const {
@@ -889,8 +890,10 @@ void Client::paintEvent(QPaintEvent* e) {
 
 
 void Client::barPaintEvent(QPaintEvent*) {
-	//kdDebug()<<"Client::barPaintEvent() : "<<caption()<<bar->geometry()<<endl;
+	//kdDebug()<<"Client::barPaintEvent() : "
+	//	<<caption()<<bar->geometry()<<corners<<endl;
 	unless(fitzFactoryInitialized()) return;
+	unless(reparented) return;
 	
 	QPainter painter(bar);
 	
@@ -948,7 +951,6 @@ void Client::barPaintEvent(QPaintEvent*) {
 void Client::showEvent(QShowEvent *)  {
 	widget()->update();
 	bar->show();
-	reposition();
 }
 
 }

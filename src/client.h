@@ -44,10 +44,8 @@ class Client : public KDecoration {
 	virtual void shadeChange();
 
 	virtual void borders(int &l, int &r, int &t, int &b) const;
-	void reposition();
 	virtual void resize(const QSize &size);
 	virtual void resizeBar();
-	virtual void resizeTitleBar();
 	virtual QSize minimumSize() const;
 	virtual Position mousePosition(const QPoint &point) const;
 	
@@ -69,6 +67,8 @@ class Client : public KDecoration {
 	bool eventFilter(QObject *obj, QEvent *e);
 	bool barEventFilter(QObject *obj, QEvent *e);
 	int redrawTitle();
+	void makeCorners();
+	void toggleDialog();
 	
 	void addButton(BtnType::Type b, const char *name,
 			const char* signal, const char* slot);
@@ -91,6 +91,7 @@ class Client : public KDecoration {
 	int headWidth() const;
 	int tailHeight() const {return 16;}
 	int tailWidth() const {return 8;}
+	int barWidth() const;
 	QRect frameGeom() const;
 		
 	QMouseEvent *event;
