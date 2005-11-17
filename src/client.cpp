@@ -96,7 +96,7 @@ void Client::init() {
 	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
 	
 	if (isPreview()) {
-		dialogType = dialog = false;
+		dialogType = dialog = !isActive();
 		barInit();
 		
 		// setup layout
@@ -136,7 +136,6 @@ void Client::init() {
 
 void Client::barInit() {
 	bar = new QWidget(widget(), "button bar", 0);
-	reparented = false;
 	hiddenTitleWidth = 0;
 
 	bar->setBackgroundMode(NoBackground);
@@ -161,10 +160,8 @@ void Client::barInit() {
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
 
-	if(isPreview()) {
+	if(isPreview())
 		bar->clearMask();
-		reparented=true;
-	}
 }
 
 //this function finds the parent window of the window decoration widget and
@@ -183,7 +180,6 @@ void Client::reparent() {
 		XFree(children);
 	
 	XReparentWindow(disp, barWin, parent, bar->x(), 0);
-	reparented = true;
 	kdDebug()<<"reparent()"<<endl;
 	resizeBar();
 }
@@ -430,31 +426,33 @@ void Client::resizeButtonPressed() {
 
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
-	//kdDebug()<<"Client::borders() : "<<caption()<<endl;
 	l = r = t = b = framesize_;
 	if(isShade())
 		t=BTN_HEIGHT+3;
 	else if(dialog)
 		t=BTN_HEIGHT+4;
+	else if(isPreview())
+		t=BTN_HEIGHT+8;
 }
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	kdDebug()<<"resize()"<<endl;
+	//kdDebug()<<"resize()"<<endl;
 	widget()->resize(size);
 	resizeBar();
 }
 
 void Client::resizeBar() {
-	kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
-		<<bar->geometry()<<hiddenTitleWidth<<endl;
+	//kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
+	//	<<bar->geometry()<<hiddenTitleWidth<<endl;
 
 	btnsWidth += hiddenTitleWidth;
 	int newWidth = width() -barWidth();
 	
-	if( (newWidth<300 && !dialog) ||
-		(newWidth>400 && dialog && !dialogType)) 
-	{
+	if(
+		(newWidth<300 && !dialog && !isPreview() ) ||
+		(newWidth>400 && dialog && !dialogType && !isPreview() )
+	) {
 		toggleDialog();
 		return;
 	}
@@ -564,7 +562,8 @@ QRect Client::frameGeom() const {
 	if(isPreview()) {
 		frame.moveTop(0);
 		frame.moveLeft(0);
-	} else if(dialog) {
+	}
+	if(dialog) {
 		frame.setTop(headHeight()-1);
 	}
 	return frame;
@@ -892,8 +891,8 @@ void Client::paintEvent(QPaintEvent* e) {
 void Client::barPaintEvent(QPaintEvent*) {
 	//kdDebug()<<"Client::barPaintEvent() : "
 	//	<<caption()<<bar->geometry()<<corners<<endl;
-	unless(fitzFactoryInitialized()) return;
-	unless(reparented) return;
+	if( !fitzFactoryInitialized()) return;
+	if(corners.isNull()) return;
 	
 	QPainter painter(bar);
 	
@@ -951,6 +950,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 void Client::showEvent(QShowEvent *)  {
 	widget()->update();
 	bar->show();
+	resizeBar();
 }
 
 }

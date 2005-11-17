@@ -101,7 +101,6 @@ class Client : public KDecoration {
 	//from bar
 	Button *button[BtnType::COUNT];
 	QBoxLayout *box;
-	bool reparented;
 	bool dialog;
 	bool dialogType;
 	int btnsWidth;
