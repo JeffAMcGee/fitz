@@ -1,3 +1,6 @@
+2005-11-16  Jeff McGee <JeffAMcGee@gmail.com>
+	* fixed bug and improved resize code
+
 2005-10-27  Jeff McGee <JeffAMcGee@gmail.com>
 
 	* added special titlebars for dialogs

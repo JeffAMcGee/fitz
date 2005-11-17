@@ -628,6 +628,12 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 	  case QEvent::Paint:
 		paintEvent(static_cast<QPaintEvent *>(e));
 		return true;
+	  case QEvent::Resize:
+		if(isPreview()) {
+			resizeBar();
+			return true;
+		}
+		return false;
 	  case QEvent::Show:
 		showEvent(static_cast<QShowEvent *>(e));
 		return true;
@@ -950,7 +956,8 @@ void Client::barPaintEvent(QPaintEvent*) {
 void Client::showEvent(QShowEvent *)  {
 	widget()->update();
 	bar->show();
-	resizeBar();
+	if(isPreview())
+		resizeBar();
 }
 
 }
