@@ -179,7 +179,7 @@ void Client::reparent() {
 	if (children)
 		XFree(children);
 	
-	XReparentWindow(disp, barWin, parent, bar->x(), 0);
+	XReparentWindow(disp, deco, parent, 0, 0);
 	kdDebug()<<"reparent()"<<endl;
 	resizeBar();
 }
@@ -469,15 +469,20 @@ void Client::resizeBar() {
 	bar->setMask(corners);
 
 	int x = width() -barWidth();
-	//bar->move(hiddenTitleWidth?0:newWidth,0);
 	bar->move(x,0);
 	
-	if(dialog) {
-		QRegion mask(corners);
-		mask.translate(x,0);
-		mask+=QRegion(frameGeom());
-		setMask(mask);
-	}
+	QRegion outside(frameGeom());
+	QRegion mask(corners);
+	mask.translate(x,0);
+
+	QRect inside = frameGeom();
+	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
+	
+	if(dialog)
+		setMask(mask+outside);
+	if(!isPreview())
+		widget()->setMask(outside-QRegion(inside)+mask);
+	
 }
 
 void Client::toggleDialog() {
@@ -577,7 +582,7 @@ QSize Client::minimumSize() const {
 void Client::setBorderSize(BorderSize b) {
 	switch(b) {
 	  case BorderTiny:
-		framesize_ = 2;
+		framesize_ = 1;
 		break;
 	  case BorderNormal:
 		framesize_ = 3;
@@ -586,11 +591,13 @@ void Client::setBorderSize(BorderSize b) {
 		framesize_ = 6;
 		break;
 	  case BorderVeryLarge:
-		framesize_ = 10;
+		framesize_ = 9;
 		break;
 	  case BorderHuge:
 	  case BorderVeryHuge:
 	  case BorderOversized:
+		framesize_ = 9;
+		break;
 	  default:
 		framesize_ = 3;
 		break;
@@ -866,11 +873,11 @@ void Client::paintEvent(QPaintEvent* e) {
 
 	// draw frame
 	for(int i=0; i<framesize_; i++) {
-		if(i==0)
+		/*if(i==0)
 			painter.setPen(bgc.dark(150));
 		else if(i==framesize_-1)
 			painter.setPen(bgc.dark(130));
-		else if(i==1)
+		else if(i==1)*/
 			painter.setPen(bgc);
 
 		painter.drawRect(frame);
@@ -922,7 +929,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 		}
 		
 		painter.setPen(bgc.dark(130));
-		painter.drawPolyline(line);
+		//painter.drawPolyline(line);
 		
 		line.putPoints(
 			0, 4,
@@ -933,7 +940,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 		);
 		
 		painter.setPen(bgc.dark(150));
-		painter.drawPolyline(line);
+		//painter.drawPolyline(line);
 		
 		if(bar->x() == 0) {
 			painter.drawLine(0,head.bottom(),0,tail.top()-1);
@@ -942,7 +949,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 		line.putPoints(0,4,corners,1);
 		line.translate(0,-1);
 		painter.setPen(bgc.dark(130));
-		painter.drawPolyline(line);
+		//painter.drawPolyline(line);
 	}
 	
 	QPoint origin = titleSpace->geometry().topLeft();
