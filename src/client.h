@@ -51,6 +51,7 @@ class Client : public KDecoration {
 	
 	void addButtons(const QString& buttons);
 	static void setBorderSize(BorderSize b);
+	static void makeStaticMasks();
 	
   signals:
 	void activeChanged(bool act);
@@ -68,6 +69,7 @@ class Client : public KDecoration {
 	bool barEventFilter(QObject *obj, QEvent *e);
 	int redrawTitle();
 	void makeCorners();
+	void doMask();
 	void toggleDialog();
 	
 	void addButton(BtnType::Type b, const char *name,
@@ -87,8 +89,10 @@ class Client : public KDecoration {
 	void showEvent(QShowEvent *);
 	//void hideEvent(QHideEvent *);
 	
-	int headHeight() const;
-	int headWidth() const;
+	static int headHeight(bool dia);
+	static int headWidth(bool dia);
+	int headHeight() const {return headHeight(dialog);}
+	int headWidth() const {return headWidth(dialog);}
 	int tailHeight() const {return 16;}
 	int tailWidth() const {return 8;}
 	int barWidth() const;
@@ -113,7 +117,12 @@ class Client : public KDecoration {
 	QPixmap *titleBar;
 	QColor bgc;
 	QColor fgc;
+	
 	static int framesize_;
+	static QRegion headWinMask;
+	static QRegion headDiaMask;
+	static QRegion tailMask;
+	static QRegion cornerMask;
 	
 	
 	//for gravity

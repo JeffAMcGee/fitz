@@ -80,6 +80,10 @@ const char *const  fitzLabel =
 "details.</center></p><br />";
 
 int Client::framesize_ = 3;
+QRegion Client::headWinMask;
+QRegion Client::headDiaMask;
+QRegion Client::tailMask;
+QRegion Client::cornerMask;
 
 // Actual initializer for class
 void Client::init() {
@@ -168,7 +172,7 @@ void Client::barInit() {
 //makes the bar a child of that window
 void Client::reparent() {
 	Display* disp = bar->x11Display();
-	Window barWin = bar->winId();
+	//Window barWin = bar->winId();
 	Window deco = widget()->winId();
 	Window root;
 	Window parent;
@@ -345,7 +349,7 @@ int Client::redrawTitle() {
 		file.truncate(50);
 		file+= "...";
 	}
-
+	
 	//change the font
 	QFont font = options()->font();
 	font.setPixelSize(BTN_HEIGHT-1);
@@ -445,7 +449,7 @@ void Client::resize(const QSize &size) {
 void Client::resizeBar() {
 	//kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
 	//	<<bar->geometry()<<hiddenTitleWidth<<endl;
-
+	
 	btnsWidth += hiddenTitleWidth;
 	int newWidth = width() -barWidth();
 	
@@ -456,7 +460,7 @@ void Client::resizeBar() {
 		toggleDialog();
 		return;
 	}
-
+	
 	if(newWidth <0) {
 		//explain this
 		hiddenTitleWidth = -newWidth;
@@ -464,22 +468,57 @@ void Client::resizeBar() {
 	} else if(hiddenTitleWidth) {
 		hiddenTitleWidth = 0;
 	}
-
+	
 	makeCorners();
-	bar->setMask(corners);
+	doMask();
+}
+
+void Client::doMask() {
+	//bar->setMask(corners);
 
 	int x = width() -barWidth();
 	bar->move(x,0);
 	
 	QRegion outside(frameGeom());
-	QRegion mask(corners);
-	mask.translate(x,0);
+	QRegion mask;
+	QRegion tmp(tailMask);
+	
+	//tail
+	tmp.translate(width() - framesize_ - tailWidth()-1, BTN_HEIGHT+4);
+	mask+=tmp;
+	
+	//head
+	tmp = (dialog?headDiaMask:headWinMask);
+	tmp.translate(x,dialog ? 0 : framesize_);
+	mask+=tmp;
 
+	//bar
+	mask+=QRegion(width()-btnsWidth,0,btnsWidth,BTN_HEIGHT+4);
+	
+	//inside corners
+	mask+=QRegion(framesize_, dialog?BTN_HEIGHT+4:framesize_, 1, 1);
+	mask+=QRegion(framesize_, height()-framesize_-1, 1, 1);
+	mask+=QRegion(width()-framesize_-1, height()-framesize_-1, 1, 1);
+
+	//outside corners
+	tmp=cornerMask&QRegion(0,0,2,2);
+	if(dialog) tmp.translate(0,BTN_HEIGHT-framesize_+4);
+	outside-=tmp;
+	tmp=cornerMask&QRegion(0,2,2,2);
+	tmp.translate(0,height()-4);
+	outside-=tmp;
+	tmp=cornerMask&QRegion(2,2,2,2);
+	tmp.translate(width()-4,height()-4);
+	outside-=tmp;
+	tmp=cornerMask&QRegion(2,0,2,2);
+	tmp.translate(width()-4,0);
+	outside-=tmp;
+	if(dialog) mask-=tmp;
+	
 	QRect inside = frameGeom();
 	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
 	
-	if(dialog)
-		setMask(mask+outside);
+	setMask(mask+outside);
 	if(!isPreview())
 		widget()->setMask(outside-QRegion(inside)+mask);
 	
@@ -549,13 +588,13 @@ void Client::makeCorners() {
 	}
 }
 
-int Client::headHeight() const {
+int Client::headHeight(bool /*dia*/) {
 	return BTN_HEIGHT+5-framesize_;
 }
 
-int Client::headWidth() const {
+int Client::headWidth(bool dia) {
 	int h = BTN_HEIGHT+5-framesize_;
-	return dialog ? (h*2-1) : (h+1)/2 ; 
+	return dia ? (h*2+3) : (h+1)/2 ; 
 }
 
 int Client::barWidth() const {
@@ -580,6 +619,7 @@ QSize Client::minimumSize() const {
 }
 
 void Client::setBorderSize(BorderSize b) {
+	kdDebug()<<"Client::setBorderSize() : "<<endl;
 	switch(b) {
 	  case BorderTiny:
 		framesize_ = 1;
@@ -602,6 +642,35 @@ void Client::setBorderSize(BorderSize b) {
 		framesize_ = 3;
 		break;
 	}
+	makeStaticMasks();
+}
+
+#include "corner.xbm"	
+#include "head_dia.xbm"	
+#include "head_win.xbm"	
+#include "tail.xbm"	
+void Client::makeStaticMasks() {
+	cornerMask = QRegion(QBitmap(corner_width,corner_height,corner_bits,true));
+	tailMask = QRegion(QBitmap(tail_width,tail_height,tail_bits,true));
+	
+	int w = headWidth(false)/2+1;
+	int h = headHeight(false)-1;
+	
+	QRegion headWin(QBitmap(head_win_width,head_win_height,head_win_bits,true));
+	QRegion left = headWin & QRegion(0,0,w,h);
+	QRegion right = headWin ;//& QRegion(head_win_width-w-1,head_win_height-h-1,w,h);
+	right.translate(2*w-head_win_width+1,h-head_win_height-1);
+	headWinMask = left + right;
+	
+	w = headWidth(true)/2+1;
+	h = headHeight(true)-1;
+	
+	QRegion headDia(QBitmap(head_dia_width,head_dia_height,head_dia_bits,true));
+	left = headDia & QRegion(0,head_dia_height-h,w,h);
+	right = headDia & QRegion(head_dia_width-w,0,w,h);
+	left.translate(0,h-head_dia_height);
+	right.translate(2*w-head_dia_width-2,0);
+	headDiaMask = left + right;
 }
 
 ///////////////////////////////////////////////////////////
@@ -871,18 +940,10 @@ void Client::paintEvent(QPaintEvent* e) {
 	QPainter painter(widget());
 	QRect frame = frameGeom();
 
+	painter.setPen(bgc);
+	
 	// draw frame
-	for(int i=0; i<framesize_; i++) {
-		/*if(i==0)
-			painter.setPen(bgc.dark(150));
-		else if(i==framesize_-1)
-			painter.setPen(bgc.dark(130));
-		else if(i==1)*/
-			painter.setPen(bgc);
-
-		painter.drawRect(frame);
-		frame.addCoords(1,1,-1,-1);
-	}
+	painter.fillRect(0,0,width(),height(),bgc);
 	
 	//fill in empty space
 	if(isSetShade()) {
@@ -912,45 +973,10 @@ void Client::barPaintEvent(QPaintEvent*) {
 	//fill in the empty space
 	painter.setPen(bgc);
 	painter.setBrush(bgc);
-	painter.drawPolygon(corners);
+	//painter.drawPolygon(corners);
+	painter.fillRect(0,0,bar->width(),bar->height(),bgc);
 
 	QPointArray line;
-
-	if(dialog) {
-		line.putPoints(
-			0, 3,
-			0, tail.top()-1,
-			tail.left(), tail.top()-1,
-			tail.right(), tail.bottom()-1
-		);
-		
-		if(bar->x() < framesize_-1) {
-			line.setPoint(0,framesize_-bar->x()-1,tail.top()-1);
-		}
-		
-		painter.setPen(bgc.dark(130));
-		//painter.drawPolyline(line);
-		
-		line.putPoints(
-			0, 4,
-			bar->width()-1, tail.bottom(),
-			bar->width()-1, 0,
-			head.right()+1, head.top(),
-			head.left(), head.bottom()
-		);
-		
-		painter.setPen(bgc.dark(150));
-		//painter.drawPolyline(line);
-		
-		if(bar->x() == 0) {
-			painter.drawLine(0,head.bottom(),0,tail.top()-1);
-		}
-	} else {
-		line.putPoints(0,4,corners,1);
-		line.translate(0,-1);
-		painter.setPen(bgc.dark(130));
-		//painter.drawPolyline(line);
-	}
 	
 	QPoint origin = titleSpace->geometry().topLeft();
 	painter.drawPixmap(
