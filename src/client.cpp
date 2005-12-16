@@ -90,39 +90,49 @@ void Client::init() {
 	createMainWidget(WResizeNoErase | WRepaintNoErase);
 	widget()->installEventFilter(this);
 	widget()->setBackgroundMode(NoBackground);
+	
+	kdDebug()<<"Client::init() "<<caption()<<endl;
 
-	NET::WindowType type = windowType(
-			NET::NormalMask | NET::DesktopMask | NET::DockMask |
-			NET::ToolbarMask | NET::MenuMask | NET::DialogMask |
-			NET::OverrideMask | NET::TopMenuMask |
-			NET::UtilityMask | NET::SplashMask
-	);
-	kdDebug()<<"Client::init() "<<caption()<<" - "<<int(type)<<endl;
+	mainLayout = new QGridLayout(widget(), 4, 3);
+
+	mainLayout->setResizeMode(QLayout::FreeResize);
+	mainLayout->addRowSpacing(0, 2);
+	mainLayout->addRowSpacing(3, framesize_);
+	mainLayout->addColSpacing(0, framesize_);
+	mainLayout->addColSpacing(2, 1);
+
+	// the window should stretch
+	mainLayout->setRowStretch(2, 10);
+	mainLayout->setColStretch(1, 10);
 	
 	if (isPreview()) {
 		dialogType = dialog = !isActive();
 		barInit();
 		
-		// setup layout
-		QBoxLayout *mainlayout = new QBoxLayout(
-			widget(), QBoxLayout::TopToBottom, framesize_, 0
+		mainLayout->addWidget(
+			new QLabel(i18n(fitzLabel),	widget()),
+			3, 2
 		);
-		mainlayout->setResizeMode(QLayout::FreeResize);
-		mainlayout->addSpacing(bar->height()-framesize_+4);
-		mainlayout->addWidget(
-				new QLabel(i18n(fitzLabel),	widget())
-		);
-		//widget()->addWidget(bar);
 	} else {
+		NET::WindowType type = windowType(
+				NET::NormalMask | NET::DesktopMask | NET::DockMask |
+				NET::ToolbarMask | NET::MenuMask | NET::DialogMask |
+				NET::OverrideMask | NET::TopMenuMask |
+				NET::UtilityMask | NET::SplashMask
+		);
 		dialogType = dialog = (type != NET::Normal);
 		barInit();
 
 		//we don't want to reparent until the window exists and qt has started
 		//processing the event loop
 		QTimer::singleShot(0,this,SLOT(reparent()));
+		
+		//maximize the window if appropriate
+		if(Factory::autoMax() && type == NET::Normal)
+			QTimer::singleShot(0,this,SLOT(maximizeFull()));
 	}
 	
-	slow = false;
+	mainLayout->addWidget(bar,1,1,AlignRight);
 
 	// setup titlebar buttons
 	addButtons(
@@ -132,20 +142,16 @@ void Client::init() {
 		
 	if(isPreview())
 		resizeBar();
-
-	//maximize the window if appropriate
-	if(Factory::autoMax() && type == NET::Normal)
-		QTimer::singleShot(0,this,SLOT(maximizeFull()));
 }
 
 void Client::barInit() {
 	bar = new QWidget(widget(), "button bar", 0);
-	hiddenTitleWidth = 0;
+	slow = false;
 
 	bar->setBackgroundMode(NoBackground);
-	bar->setSizePolicy(QSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed));
+	bar->setSizePolicy(QSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed));
 	
-	box = new QBoxLayout(bar, QBoxLayout::LeftToRight, 2, 0, "Fitz::Bar Layout");
+	box = new QBoxLayout(bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
 
 	// setup titlebar buttons
 	for (int n=0; n<BtnType::COUNT; n++) {
@@ -154,12 +160,6 @@ void Client::barInit() {
 	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
 	titleBar = new QPixmap;
 	
-	headSpace = new QSpacerItem(
-			headWidth()-2,0,
-			QSizePolicy::Fixed,
-			QSizePolicy::Minimum
-	);
-	box->addItem(headSpace);
 	
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
@@ -194,7 +194,6 @@ void Client::reparent() {
 // Add buttons to title layout
 void Client::addButtons(const QString& s) {
 	//kdDebug()<<"Client::addButtons()"<<endl;
-	btnsWidth=0;
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
 
@@ -260,7 +259,6 @@ void Client::addButtons(const QString& s) {
 	// Things that aren't buttons
 		  case '_': // Spacer item
 			box->addSpacing(SPACERSIZE);
-			btnsWidth+=SPACERSIZE;
 			break;
 
 		  case ' ': // Title bar
@@ -284,9 +282,7 @@ void Client::addButton(BtnType::Type b, const char *name,
 		connect(button[b], signal, this, slot);
 		connect(this, SIGNAL(activeChanged(bool)), button[b], SLOT(setActive(bool)));
 		box->addWidget (button[b],0,Qt::AlignTop);
-		btnsWidth+=BTN_WIDTH;
 	}
-
 }
 
 // This adds a button that can be toggled ( it is also called by addButtons() )
@@ -330,7 +326,13 @@ void Client::iconChange() { ; }
 void Client::captionChange() {
 	int oldWidth = titleBar->width();
 	int width = redrawTitle();
-	btnsWidth+=width-oldWidth;
+	
+	titleSpace->changeSize(
+		width, BTN_HEIGHT,
+		QSizePolicy::Maximum, QSizePolicy::Fixed
+	);
+	box->activate();
+	mainLayout->activate();
 	
 	//force repaint even if resize was a nop
 	bar->update();
@@ -447,10 +449,9 @@ void Client::resize(const QSize &size) {
 }
 
 void Client::resizeBar() {
-	//kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
-	//	<<bar->geometry()<<hiddenTitleWidth<<endl;
+	kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
+		<<bar->geometry()<<endl;
 	
-	btnsWidth += hiddenTitleWidth;
 	int newWidth = width() -barWidth();
 	
 	if(
@@ -461,40 +462,31 @@ void Client::resizeBar() {
 		return;
 	}
 	
-	if(newWidth <0) {
-		//explain this
-		hiddenTitleWidth = -newWidth;
-		btnsWidth -= hiddenTitleWidth;
-	} else if(hiddenTitleWidth) {
-		hiddenTitleWidth = 0;
-	}
-	
-	makeCorners();
 	doMask();
 }
 
 void Client::doMask() {
-	//bar->setMask(corners);
-
-	int x = width() -barWidth();
-	bar->move(x,0);
+	//Welcome to the land of magic constants.  I hope you enjoy your stay.
 	
 	QRegion outside(frameGeom());
 	QRegion mask;
 	QRegion tmp(tailMask);
 	
+	//bar
+	QRect barGeom = bar->geometry();
+	barGeom.addCoords(dialog?2:5,-2,1,2);
+	mask+=QRegion(barGeom);
+	
+	//head
+	tmp = (dialog?headDiaMask:headWinMask);
+	tmp.translate(barGeom.left()-headWidth()+1,dialog ? 0 : framesize_);
+	mask+=tmp;
+	
 	//tail
 	tmp.translate(width() - framesize_ - tailWidth()-1, BTN_HEIGHT+4);
 	mask+=tmp;
 	
-	//head
-	tmp = (dialog?headDiaMask:headWinMask);
-	tmp.translate(x,dialog ? 0 : framesize_);
-	mask+=tmp;
 
-	//bar
-	mask+=QRegion(width()-btnsWidth,0,btnsWidth,BTN_HEIGHT+4);
-	
 	//inside corners
 	mask+=QRegion(framesize_, dialog?BTN_HEIGHT+4:framesize_, 1, 1);
 	mask+=QRegion(framesize_, height()-framesize_-1, 1, 1);
@@ -513,7 +505,7 @@ void Client::doMask() {
 	tmp=cornerMask&QRegion(2,0,2,2);
 	tmp.translate(width()-4,0);
 	outside-=tmp;
-	if(dialog) mask-=tmp;
+	mask-=tmp;
 	
 	QRect inside = frameGeom();
 	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
@@ -528,11 +520,6 @@ void Client::toggleDialog() {
 	dialog=!dialog;
 	
 	if(!dialog)	clearMask();
-	headSpace->changeSize(
-		headWidth()-2,0,
-		QSizePolicy::Fixed,
-		QSizePolicy::Minimum
-	);
 	box->invalidate();
 	
 	//tell kwin about our change in borders()
@@ -544,61 +531,17 @@ void Client::toggleDialog() {
 	return;
 }
 
-void Client::makeCorners() {
-	//Welcome to the land of magic constants.  I hope you enjoy your stay.
-	bar->setFixedSize(
-		barWidth(),
-		BTN_HEIGHT+tailHeight()+3
-	);
-	head = QRect(
-		0,
-		dialog ? 0 : framesize_,
-		headWidth(),
-		headHeight()
-	);
-	tail = QRect(
-		bar->width() - framesize_ - tailWidth(),
-		BTN_HEIGHT+4,
-		tailWidth(),
-		tailHeight()
-	);
-	
-	if(dialog) {
-		corners.putPoints(
-			0, 7,
-			0,BTN_HEIGHT+3,
-			tail.left(), tail.top(),
-			tail.right(), tail.bottom(),
-			bar->width(), tail.bottom(),
-			bar->width(), 0,
-			head.right(), head.top(),
-			head.left(), head.bottom()
-		);
-	} else {
-		corners.putPoints(
-			0, 7,
-			0, 1,
-			head.left(), head.top(),
-			head.right(), head.bottom(),
-			tail.left(), tail.top(),
-			tail.right(), tail.bottom(),
-			bar->width()-1, tail.bottom(),
-			bar->width()-1, 1
-		);
-	}
-}
-
 int Client::headHeight(bool /*dia*/) {
-	return BTN_HEIGHT+5-framesize_;
+	return BTN_HEIGHT+4-framesize_;
 }
 
 int Client::headWidth(bool dia) {
-	int h = BTN_HEIGHT+5-framesize_;
-	return dia ? (h*2+3) : (h+1)/2 ; 
+	int h = BTN_HEIGHT+4-framesize_;
+	return dia ? (h*2+1) : (h/2+2) ; 
 }
 
 int Client::barWidth() const {
-	return btnsWidth +headWidth() -2;
+	return bar->width() +headWidth();
 }
 
 QRect Client::frameGeom() const {
@@ -608,14 +551,14 @@ QRect Client::frameGeom() const {
 		frame.moveLeft(0);
 	}
 	if(dialog) {
-		frame.setTop(headHeight()-1);
+		frame.setTop(headHeight());
 	}
 	return frame;
 }
 
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
-	return QSize(bar->width()-titleBar->width()+hiddenTitleWidth, bar->height());
+	return QSize(bar->width()-titleBar->width(), bar->height());
 }
 
 void Client::setBorderSize(BorderSize b) {
@@ -653,24 +596,28 @@ void Client::makeStaticMasks() {
 	cornerMask = QRegion(QBitmap(corner_width,corner_height,corner_bits,true));
 	tailMask = QRegion(QBitmap(tail_width,tail_height,tail_bits,true));
 	
-	int w = headWidth(false)/2+1;
-	int h = headHeight(false)-1;
+	int w = headWidth(false)/2;
+	int h = headHeight(false);
 	
 	QRegion headWin(QBitmap(head_win_width,head_win_height,head_win_bits,true));
 	QRegion left = headWin & QRegion(0,0,w,h);
 	QRegion right = headWin ;//& QRegion(head_win_width-w-1,head_win_height-h-1,w,h);
-	right.translate(2*w-head_win_width+1,h-head_win_height-1);
+	right.translate(2*w-head_win_width,h-head_win_height);
 	headWinMask = left + right;
 	
-	w = headWidth(true)/2+1;
-	h = headHeight(true)-1;
+	kdDebug()<<"makeStaticMasks "<<w<<" "<<h<<left<<right<<endl;
+	
+	w = headWidth(true)/2;
+	h = headHeight(true);
 	
 	QRegion headDia(QBitmap(head_dia_width,head_dia_height,head_dia_bits,true));
 	left = headDia & QRegion(0,head_dia_height-h,w,h);
 	right = headDia & QRegion(head_dia_width-w,0,w,h);
 	left.translate(0,h-head_dia_height);
-	right.translate(2*w-head_dia_width-2,0);
+	right.translate(2*w-head_dia_width,0);
 	headDiaMask = left + right;
+	
+	kdDebug()<<"makeStaticMasks "<<w<<" "<<h<<left<<right<<endl;
 }
 
 ///////////////////////////////////////////////////////////
@@ -966,7 +913,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 	//kdDebug()<<"Client::barPaintEvent() : "
 	//	<<caption()<<bar->geometry()<<corners<<endl;
 	if( !fitzFactoryInitialized()) return;
-	if(corners.isNull()) return;
+	//if(corners.isNull()) return;
 	
 	QPainter painter(bar);
 	
@@ -981,7 +928,7 @@ void Client::barPaintEvent(QPaintEvent*) {
 	QPoint origin = titleSpace->geometry().topLeft();
 	painter.drawPixmap(
 		origin.x(), origin.y(), *titleBar, 0, 0,
-		titleBar->width()-hiddenTitleWidth, -1
+		titleSpace->geometry().width(), -1
 	);
 }
 

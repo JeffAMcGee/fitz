@@ -19,6 +19,7 @@
 #include "fitz.h"
 
 class QBoxLayout;
+class QGridLayout;
 class QSpacerItem;
 class QPixmap;
 class QWidget;
@@ -68,7 +69,6 @@ class Client : public KDecoration {
 	bool eventFilter(QObject *obj, QEvent *e);
 	bool barEventFilter(QObject *obj, QEvent *e);
 	int redrawTitle();
-	void makeCorners();
 	void doMask();
 	void toggleDialog();
 	
@@ -87,7 +87,6 @@ class Client : public KDecoration {
 	void paintEvent(QPaintEvent *e);
 	void barPaintEvent(QPaintEvent *e);
 	void showEvent(QShowEvent *);
-	//void hideEvent(QHideEvent *);
 	
 	static int headHeight(bool dia);
 	static int headWidth(bool dia);
@@ -107,16 +106,12 @@ class Client : public KDecoration {
 	QBoxLayout *box;
 	bool dialog;
 	bool dialogType;
-	int btnsWidth;
-	int hiddenTitleWidth;
-	QPointArray corners;
-	QRect head;
-	QRect tail;
 	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
 	QColor bgc;
 	QColor fgc;
+	QGridLayout *mainLayout;
 	
 	static int framesize_;
 	static QRegion headWinMask;
