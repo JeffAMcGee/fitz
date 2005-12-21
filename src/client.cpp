@@ -470,7 +470,7 @@ void Client::doMask() {
 	
 	QRegion outside(frameGeom());
 	QRegion mask;
-	QRegion tmp(tailMask);
+	QRegion tmp;
 	
 	//bar
 	QRect barGeom = bar->geometry();
@@ -483,6 +483,7 @@ void Client::doMask() {
 	mask+=tmp;
 	
 	//tail
+	tmp = tailMask;
 	tmp.translate(width() - framesize_ - tailWidth()-1, BTN_HEIGHT+4);
 	mask+=tmp;
 	
@@ -493,19 +494,48 @@ void Client::doMask() {
 	mask+=QRegion(width()-framesize_-1, height()-framesize_-1, 1, 1);
 
 	//outside corners
+	enum{LEFT=1,RIGHT=2,TOP=4,BOTTOM=8};
+	int edges = 0;
+	if(!isPreview()){
+		QWidget *d = QApplication::desktop();
+		QRect r = widget()->geometry();
+		QPoint tl = widget()->mapToGlobal(r.topLeft());
+		QPoint br = widget()->mapToGlobal(r.bottomRight());
+		
+		if(tl.x()==0)
+			edges+=LEFT;
+		if(br.x()==d->width()-1)
+			edges+=RIGHT;
+		if(tl.y()==0)
+			edges+=TOP;
+		if(br.y()==d->height()-1)
+			edges+=BOTTOM;
+		
+		kdDebug()<<"doMask() "<<tl<<br<<d->width()<<d->height()<<" "<<edges<<endl;
+	}
+
 	tmp=cornerMask&QRegion(0,0,2,2);
-	if(dialog) tmp.translate(0,BTN_HEIGHT-framesize_+4);
-	outside-=tmp;
+	if(dialog)
+		tmp.translate(0,BTN_HEIGHT-framesize_+4);
+	if(dialog || !((edges&LEFT) || (edges&TOP)) )
+		outside-=tmp;
+	
 	tmp=cornerMask&QRegion(0,2,2,2);
 	tmp.translate(0,height()-4);
-	outside-=tmp;
+	if(!((edges&LEFT) || (edges&BOTTOM)) )
+		outside-=tmp;
+	
 	tmp=cornerMask&QRegion(2,2,2,2);
 	tmp.translate(width()-4,height()-4);
-	outside-=tmp;
+	if(!((edges&RIGHT) || (edges&BOTTOM)) )
+		outside-=tmp;
+	
 	tmp=cornerMask&QRegion(2,0,2,2);
 	tmp.translate(width()-4,0);
-	outside-=tmp;
-	mask-=tmp;
+	if(!((edges&RIGHT) || (edges&TOP)) ) {
+		outside-=tmp;
+		mask-=tmp;
+	}
 	
 	QRect inside = frameGeom();
 	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
@@ -571,7 +601,7 @@ void Client::setBorderSize(BorderSize b) {
 		framesize_ = 3;
 		break;
 	  case BorderLarge:
-		framesize_ = 6;
+		framesize_ = 5;
 		break;
 	  case BorderVeryLarge:
 		framesize_ = 9;
@@ -602,10 +632,8 @@ void Client::makeStaticMasks() {
 	QRegion headWin(QBitmap(head_win_width,head_win_height,head_win_bits,true));
 	QRegion left = headWin & QRegion(0,0,w,h);
 	QRegion right = headWin ;//& QRegion(head_win_width-w-1,head_win_height-h-1,w,h);
-	right.translate(2*w-head_win_width,h-head_win_height);
+	right.translate(headWidth(false)-head_win_width-1,h-head_win_height);
 	headWinMask = left + right;
-	
-	kdDebug()<<"makeStaticMasks "<<w<<" "<<h<<left<<right<<endl;
 	
 	w = headWidth(true)/2;
 	h = headHeight(true);
@@ -616,8 +644,6 @@ void Client::makeStaticMasks() {
 	left.translate(0,h-head_dia_height);
 	right.translate(2*w-head_dia_width,0);
 	headDiaMask = left + right;
-	
-	kdDebug()<<"makeStaticMasks "<<w<<" "<<h<<left<<right<<endl;
 }
 
 ///////////////////////////////////////////////////////////
@@ -813,7 +839,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 		if(x<framesize_) { //left
 			 x=framesize_+6;
 			 willMove=true;
-		}  else if((w-x)<=framesize_) {//right
+		} else if((w-x)<=framesize_) {//right
 			x=w-framesize_-6;
 			willMove=true;
 		}

@@ -1,6 +1,6 @@
 These are known bugs in Fitz.  Most of them will be fixed eventually. There are
 also unknown bugs, which probably won't be fixed until someone like you finds
-them and tells me about it or fixes it themselves.
+them and tells me about it or fixes it themselves. :-)
 
 /*=== Scribbling on Other Applications =======================================*/
 Fitz assumes that the top-right corner is empty. If an application actually puts
@@ -18,9 +18,3 @@ old-school X programs that put the help menu on the right side.  It's been
 In this style, the frame, buttons, and title bar are all kind of the same thing
 - they don't look right unless they are the same color.  - Use the title bar
 colors for the button bar and make the frame a different color.
-
-/*=== Mouse Stealing ??? =====================================================*/
-On two occasions during the past few weeks my mouse suddenly stopped working.
-Moving worked, but clicking didn't.  Stoping X and then starting it again did
-not fix the problem, so I don't see how Fitz could have don that, but I'm not
-completely sure. Update: this hasn't happened since around may or june of 2005.

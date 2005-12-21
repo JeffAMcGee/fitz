@@ -1,18 +1,24 @@
+fitz (0.4) unstable; urgency=low
+
+  * Made it look pretty.
+
+ -- Jeff McGee <JeffAMcGee@gmail.com>  Fri, 16 Dec 2005 14:05:55 -0600
+
 fitz (0.3.1) unstable; urgency=low
 
   * Bug fixes.
 
- -- Jeff McGee (user) <JeffAMcGee@gmail.com>  Wed,  16 Nov 2005 23:01:52 -0500
+ -- Jeff McGee <JeffAMcGee@gmail.com>  Wed,  16 Nov 2005 23:01:52 -0500
 
 fitz (0.3) unstable; urgency=low
 
   * Dialog windows.
 
- -- Jeff McGee (user) <JeffAMcGee@gmail.com>  Sun,  16 Oct 2005 23:01:52 -0500
+ -- Jeff McGee <JeffAMcGee@gmail.com>  Sun,  16 Oct 2005 23:01:52 -0500
 
 fitz (0.2-1) unstable; urgency=low
 
   * Initial Release.
 
- -- Jeff McGee (user) <JeffAMcGee@gmail.com>  Wed,  6 Jul 2005 07:54:08 -0500
+ -- Jeff McGee <JeffAMcGee@gmail.com>  Wed,  6 Jul 2005 07:54:08 -0500
 
