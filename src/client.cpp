@@ -25,6 +25,7 @@
 #include <qtooltip.h>
 #include <qcursor.h>
 #include <qapplication.h>
+#include <qvariant.h> //needed for SuSE rpm
 
 //fitz
 #include "fitz.h"
@@ -68,7 +69,7 @@ Client::~Client() {
 		Display* disp = bar->x11Display();
 		XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
 	}
-	//???
+	//Which is better: A crash or a leak?
 	//delete titleBar;
 }
 
@@ -85,6 +86,7 @@ QRegion Client::headDiaMask;
 QRegion Client::tailMask;
 QRegion Client::cornerMask;
 
+
 // Actual initializer for class
 void Client::init() {
 	createMainWidget(WResizeNoErase | WRepaintNoErase);
@@ -94,12 +96,23 @@ void Client::init() {
 	kdDebug()<<"Client::init() "<<caption()<<endl;
 
 	mainLayout = new QGridLayout(widget(), 4, 3);
+	/*The mainLayout looks like this:
+
+	  *         *
+	***************
+	  *     the bar   
+	***************
+	  *         *
+	  *  label  *
+	  *         *
+	***************
+	  *         *    */
 
 	mainLayout->setResizeMode(QLayout::FreeResize);
 	mainLayout->addRowSpacing(0, 2);
 	mainLayout->addRowSpacing(3, framesize_);
 	mainLayout->addColSpacing(0, framesize_);
-	mainLayout->addColSpacing(2, 1);
+	mainLayout->addColSpacing(2, framesize_);
 
 	// the window should stretch
 	mainLayout->setRowStretch(2, 10);
@@ -111,7 +124,7 @@ void Client::init() {
 		
 		mainLayout->addWidget(
 			new QLabel(i18n(fitzLabel),	widget()),
-			3, 2
+			2, 1
 		);
 	} else {
 		NET::WindowType type = windowType(
@@ -132,7 +145,7 @@ void Client::init() {
 			QTimer::singleShot(0,this,SLOT(maximizeFull()));
 	}
 	
-	mainLayout->addWidget(bar,1,1,AlignRight);
+	mainLayout->addMultiCellWidget(bar,1,1,1,2,AlignRight);
 
 	// setup titlebar buttons
 	addButtons(
@@ -140,8 +153,10 @@ void Client::init() {
 		options()->titleButtonsRight()
 	);
 		
-	if(isPreview())
-		resizeBar();
+	//if(isPreview())
+		//resizeBar();
+	
+	kdDebug()<<"end of init : "<<caption()<<endl;
 }
 
 void Client::barInit() {
@@ -157,10 +172,10 @@ void Client::barInit() {
 	for (int n=0; n<BtnType::COUNT; n++) {
 		button[n] = 0;
 	}
+	
 	titleSpace = new QSpacerItem(0,BTN_HEIGHT);
 	titleBar = new QPixmap;
-	
-	
+		
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
 
@@ -172,7 +187,6 @@ void Client::barInit() {
 //makes the bar a child of that window
 void Client::reparent() {
 	Display* disp = bar->x11Display();
-	//Window barWin = bar->winId();
 	Window deco = widget()->winId();
 	Window root;
 	Window parent;
@@ -433,9 +447,11 @@ void Client::resizeButtonPressed() {
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
 	l = r = t = b = framesize_;
-	if(isShade())
-		t=BTN_HEIGHT+3;
-	else if(dialog)
+	kdDebug()<<"borders()"<<endl;
+	if(isShade()) {
+		t=BTN_HEIGHT+5;
+		b=0;
+	} else if(dialog)
 		t=BTN_HEIGHT+4;
 	else if(isPreview())
 		t=BTN_HEIGHT+8;
@@ -443,18 +459,18 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	//kdDebug()<<"resize()"<<endl;
 	widget()->resize(size);
+	//kdDebug()<<"resize()"<<endl;
 	resizeBar();
 }
 
 void Client::resizeBar() {
 	kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
-		<<bar->geometry()<<endl;
+		<<bar->geometry()<<dialog<<endl;
 	
 	int newWidth = width() -barWidth();
 	
-	if(
+	if( 
 		(newWidth<300 && !dialog && !isPreview() ) ||
 		(newWidth>400 && dialog && !dialogType && !isPreview() )
 	) {
@@ -496,7 +512,7 @@ void Client::doMask() {
 	//outside corners
 	enum{LEFT=1,RIGHT=2,TOP=4,BOTTOM=8};
 	int edges = 0;
-	if(!isPreview()){
+	if(!isPreview()) {
 		QWidget *d = QApplication::desktop();
 		QRect r = widget()->geometry();
 		QPoint tl = widget()->mapToGlobal(r.topLeft());
@@ -510,15 +526,15 @@ void Client::doMask() {
 			edges+=TOP;
 		if(br.y()==d->height()-1)
 			edges+=BOTTOM;
-		
-		kdDebug()<<"doMask() "<<tl<<br<<d->width()<<d->height()<<" "<<edges<<endl;
 	}
 
 	tmp=cornerMask&QRegion(0,0,2,2);
-	if(dialog)
+	if(dialog && headWidth() + bar->width() < width() ) {
 		tmp.translate(0,BTN_HEIGHT-framesize_+4);
-	if(dialog || !((edges&LEFT) || (edges&TOP)) )
 		outside-=tmp;
+	} else if(!((edges&LEFT) || (edges&TOP))) {
+		outside-=tmp;
+	}
 	
 	tmp=cornerMask&QRegion(0,2,2,2);
 	tmp.translate(0,height()-4);
@@ -540,20 +556,20 @@ void Client::doMask() {
 	QRect inside = frameGeom();
 	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
 	
+	//shadedWindow = 
 	setMask(mask+outside);
 	if(!isPreview())
 		widget()->setMask(outside-QRegion(inside)+mask);
-	
 }
 
 void Client::toggleDialog() {
 	dialog=!dialog;
 	
-	if(!dialog)	clearMask();
+	//if(!dialog) clearMask();
 	box->invalidate();
 	
 	//tell kwin about our change in borders()
-	if( !isSetShade() ) {
+	if( !isShade() ) {
 		setShade(1);
 		setShade(0);
 		return;
@@ -679,6 +695,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return true;
 	  case QEvent::Resize:
 		if(isPreview()) {
+			kdDebug()<<"eventFilter"<<endl;
 			resizeBar();
 			return true;
 		}
@@ -695,7 +712,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 }
 
 
-// Event filter
+// the bar event filter just handles mouse junk
 bool Client::barEventFilter(QObject *obj, QEvent *e) {
 	if (obj != bar) return false;
 	//kdDebug()<<"Bar::barEventFilter("<<e->type()<<") : "<<caption()<<endl;
@@ -748,11 +765,10 @@ bool Client::barEventFilter(QObject *obj, QEvent *e) {
 			we->pos() + bar->pos(), we->globalPos(), we->delta(), we->state(),
 			we->orientation()
 		);
-		//QWheelEvent ( const QPoint & pos, const QPoint & globalPos, int delta, int state, Orientation orient = Vertical )
 		break;
 			
 	  case QEvent::Paint:
-		barPaintEvent(static_cast<QPaintEvent *>(e));
+		//widget's paintEvent took care of it for us
 		return true;
 
 	  default:
@@ -776,7 +792,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	int x = point.x();
 	int y = point.y();
 	
-	if((bar->geometry().contains(point) && y>1) || isSetShade())
+	if((bar->geometry().contains(point) && y>1) || isShade())
 		return PositionCenter;
 	
 	if (x <= corner)
@@ -799,7 +815,7 @@ void Client::mousePressEvent(QMouseEvent *e) {
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
 		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
-		! isSetShade()
+		! isShade()
 	) {
 		//this is a left mouse button press that is not inside the button bar
 		assert(event == 0);
@@ -919,9 +935,9 @@ void Client::paintEvent(QPaintEvent* e) {
 	painter.fillRect(0,0,width(),height(),bgc);
 	
 	//fill in empty space
-	if(isSetShade()) {
-		frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
-		painter.fillRect(frame, bgc.light(120));
+	if(isShade()) {
+		//frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
+		//painter.fillRect(frame, bgc.light(120));
 	}
 
 	if(isPreview()) {
@@ -930,27 +946,15 @@ void Client::paintEvent(QPaintEvent* e) {
 	}
 	
 	//avoid flicker by drawing bar now instead of waiting for event loop to send
-	//paintEvent to bar. this results in two calls to barPaint for every paintEvent. Ohh well.
+	//paintEvent to bar.
 	barPaintEvent(e);
 }
 
 
 void Client::barPaintEvent(QPaintEvent*) {
-	//kdDebug()<<"Client::barPaintEvent() : "
-	//	<<caption()<<bar->geometry()<<corners<<endl;
 	if( !fitzFactoryInitialized()) return;
-	//if(corners.isNull()) return;
 	
 	QPainter painter(bar);
-	
-	//fill in the empty space
-	painter.setPen(bgc);
-	painter.setBrush(bgc);
-	//painter.drawPolygon(corners);
-	painter.fillRect(0,0,bar->width(),bar->height(),bgc);
-
-	QPointArray line;
-	
 	QPoint origin = titleSpace->geometry().topLeft();
 	painter.drawPixmap(
 		origin.x(), origin.y(), *titleBar, 0, 0,

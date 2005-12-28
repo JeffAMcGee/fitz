@@ -106,6 +106,7 @@ class Client : public KDecoration {
 	QBoxLayout *box;
 	bool dialog;
 	bool dialogType;
+	QRegion shadedWindow;
 	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
