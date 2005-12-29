@@ -23,6 +23,7 @@ class QGridLayout;
 class QSpacerItem;
 class QPixmap;
 class QWidget;
+class QLabel;
 
 namespace Fitz {
 
@@ -106,13 +107,15 @@ class Client : public KDecoration {
 	QBoxLayout *box;
 	bool dialog;
 	bool dialogType;
-	QRegion shadedWindow;
+	bool togglingDialog;
+	QRegion insideMask;
 	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;
 	QPixmap *titleBar;
 	QColor bgc;
 	QColor fgc;
 	QGridLayout *mainLayout;
+	QLabel* label;
 	
 	static int framesize_;
 	static QRegion headWinMask;

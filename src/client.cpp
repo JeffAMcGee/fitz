@@ -22,6 +22,7 @@
 #include <qfont.h>
 #include <qbitmap.h>
 #include <qpainter.h>
+#include <qmemarray.h>
 #include <qtooltip.h>
 #include <qcursor.h>
 #include <qapplication.h>
@@ -61,7 +62,6 @@ Client::Client(KDecorationBridge *b, KDecorationFactory *f)
 	: KDecoration(b, f), event(0) { ; }
 
 Client::~Client() {
-	//kdDebug()<<"Client::dtor()"<<endl;
 	for (int n=0; n<BtnType::COUNT; n++) {
 		if (button[n]) delete button[n];
 	}
@@ -69,6 +69,7 @@ Client::~Client() {
 		Display* disp = bar->x11Display();
 		XChangePointerControl(disp, do_accel, do_thresh, accel_num, accel_denom, thresh);
 	}
+	titleBar->resize(0,0);
 	//Which is better: A crash or a leak?
 	//delete titleBar;
 }
@@ -93,7 +94,7 @@ void Client::init() {
 	widget()->installEventFilter(this);
 	widget()->setBackgroundMode(NoBackground);
 	
-	kdDebug()<<"Client::init() "<<caption()<<endl;
+	kdDebug()<<"init() "<<caption()<<endl;
 
 	mainLayout = new QGridLayout(widget(), 4, 3);
 	/*The mainLayout looks like this:
@@ -122,10 +123,8 @@ void Client::init() {
 		dialogType = dialog = !isActive();
 		barInit();
 		
-		mainLayout->addWidget(
-			new QLabel(i18n(fitzLabel),	widget()),
-			2, 1
-		);
+		label = new QLabel(i18n(fitzLabel),	widget());
+		mainLayout->addWidget(label,2,1);
 	} else {
 		NET::WindowType type = windowType(
 				NET::NormalMask | NET::DesktopMask | NET::DockMask |
@@ -152,16 +151,12 @@ void Client::init() {
 		options()->titleButtonsLeft() + " " +
 		options()->titleButtonsRight()
 	);
-		
-	//if(isPreview())
-		//resizeBar();
-	
-	kdDebug()<<"end of init : "<<caption()<<endl;
 }
 
 void Client::barInit() {
 	bar = new QWidget(widget(), "button bar", 0);
 	slow = false;
+	togglingDialog = false;
 
 	bar->setBackgroundMode(NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed));
@@ -207,7 +202,6 @@ void Client::reparent() {
 
 // Add buttons to title layout
 void Client::addButtons(const QString& s) {
-	//kdDebug()<<"Client::addButtons()"<<endl;
 	for (unsigned i=0; i < s.length(); i++) {
 		switch (s[i]) {
 
@@ -459,26 +453,33 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
+	if(togglingDialog) return;
 	widget()->resize(size);
 	//kdDebug()<<"resize()"<<endl;
 	resizeBar();
 }
 
 void Client::resizeBar() {
-	kdDebug()<<"Client::resizeBar() : "<<caption()<<geometry()
-		<<bar->geometry()<<dialog<<endl;
+	//kdDebug()<<"resizeBar() : "<<caption()<<geometry()
+	//	<<bar->geometry()<<dialog<<endl;
 	
 	int newWidth = width() -barWidth();
 	
 	if( 
-		(newWidth<300 && !dialog && !isPreview() ) ||
-		(newWidth>400 && dialog && !dialogType && !isPreview() )
+		(newWidth<400 && !dialog && !isPreview() ) ||
+		(newWidth>500 && dialog && !dialogType && !isPreview() )
 	) {
 		toggleDialog();
-		return;
 	}
 	
 	doMask();
+}
+
+//just a helper for doMask()
+void setParentMask(QWidget *w, QRegion r) {
+	QPoint p = w->mapFromParent(QPoint(0,0));
+	r.translate(p.x(),p.y());
+	w->setMask(r);
 }
 
 void Client::doMask() {
@@ -553,25 +554,36 @@ void Client::doMask() {
 		mask-=tmp;
 	}
 	
-	QRect inside = frameGeom();
-	inside.addCoords(framesize_,framesize_,-framesize_,-framesize_);
+	QRect insideRect = frameGeom();
+	insideRect.addCoords(framesize_,framesize_,-framesize_,-framesize_);
+	insideMask = QRegion(insideRect)-mask;
 	
-	//shadedWindow = 
 	setMask(mask+outside);
-	if(!isPreview())
-		widget()->setMask(outside-QRegion(inside)+mask);
+	if(isShade() && !dialog) {
+		widget()->setMask(outside);
+		setParentMask(bar,mask);
+	} else if(!isPreview()) {
+		widget()->setMask(outside-insideMask+mask);
+	} else {
+		widget()->setMask(mask+outside);
+		QPoint p = label->mapFromParent(QPoint(0,0));
+		setParentMask(label,insideMask);
+		if(!dialog)
+			setParentMask(bar,mask);
+	}
 }
 
 void Client::toggleDialog() {
 	dialog=!dialog;
 	
-	//if(!dialog) clearMask();
 	box->invalidate();
 	
 	//tell kwin about our change in borders()
 	if( !isShade() ) {
+		togglingDialog = 1;
 		setShade(1);
 		setShade(0);
+		togglingDialog = 0;
 		return;
 	}
 	return;
@@ -604,11 +616,12 @@ QRect Client::frameGeom() const {
 
 // Return the minimum allowable size for this decoration
 QSize Client::minimumSize() const {
-	return QSize(bar->width()-titleBar->width(), bar->height());
+	QSize s = box->minimumSize();
+	return QSize(s.width()-framesize_*2, 40);
 }
 
 void Client::setBorderSize(BorderSize b) {
-	kdDebug()<<"Client::setBorderSize() : "<<endl;
+	kdDebug()<<"setBorderSize() : "<<endl;
 	switch(b) {
 	  case BorderTiny:
 		framesize_ = 1;
@@ -671,7 +684,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return barEventFilter(obj, e);
 	if (obj != widget())
 		return false;
-	//kdDebug()<<"Client::eventFilter("<<e->type()<<") : "<<caption()<<endl;
+	//kdDebug()<<"eventFilter("<<e->type()<<") : "<<caption()<<endl;
  
 	switch (e->type()) {
 	  case QEvent::MouseButtonPress:
@@ -787,7 +800,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	const int corner = 32;
 	Position pos = PositionCenter;
 	
-	//kdDebug()<<"Client::mousePosition("<<point<<") : "<<caption()<<endl;
+	//kdDebug()<<"mousePosition("<<point<<") : "<<caption()<<endl;
 
 	int x = point.x();
 	int y = point.y();
@@ -811,7 +824,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 
 // Deal with mouse click
 void Client::mousePressEvent(QMouseEvent *e) {
-	//kdDebug()<<"Client::mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kdDebug()<<"mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
 		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
@@ -829,7 +842,7 @@ void Client::mousePressEvent(QMouseEvent *e) {
 }
 
 void Client::mouseReleaseEvent(QMouseEvent *e) {
-	//kdDebug()<<"Client::mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kdDebug()<<"mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 
 	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton) && event !=0) {
 		delete event;
@@ -884,7 +897,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 }
 
 void Client::mouseLeaveEvent(QMouseEvent * /*e*/) {
-	//kdDebug()<<"Client::mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kdDebug()<<"mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	
 	if(event!=0) {
 		processMousePressEvent(event);
@@ -915,11 +928,11 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
-	//kdDebug()<<"Client::paintEvent() : "<<caption()<<endl;
+	//kdDebug()<<"paintEvent() : "<<caption()<<endl;
 
 	//check for color change
-	QColor fg=KDecoration::options()->color(KDecoration::ColorFont,isActive());
-	QColor bg=KDecoration::options()->color(KDecoration::ColorTitleBar,isActive());
+	QColor fg = KDecoration::options()->color(KDecoration::ColorFont,isActive());
+	QColor bg = KDecoration::options()->color(KDecoration::ColorTitleBar,isActive());
 	if(bg!=bgc || fg!=fgc) {
 		fgc=fg;
 		bgc=bg;
@@ -927,24 +940,23 @@ void Client::paintEvent(QPaintEvent* e) {
 	}
 	
 	QPainter painter(widget());
-	QRect frame = frameGeom();
-
 	painter.setPen(bgc);
 	
 	// draw frame
 	painter.fillRect(0,0,width(),height(),bgc);
 	
 	//fill in empty space
-	if(isShade()) {
-		//frame.setRect(framesize_, framesize_, width()-framesize_*2, height()-framesize_*2);
-		//painter.fillRect(frame, bgc.light(120));
+	if((isPreview() || isShade()) && !dialog) {
+		QColor widgetBg = widget()->colorGroup().background();
+		QMemArray<QRect> ar = insideMask.rects();
+		QMemArray<QRect>::Iterator it;
+
+		//Why isn't there a painter.fillRegion()?
+		for(it = ar.begin(); it != ar.end(); ++it) {
+			painter.fillRect(*it, widgetBg);
+		}
 	}
 
-	if(isPreview()) {
-		frame.setBottom(bar->height());
-		painter.fillRect(frame, widget()->paletteBackgroundColor());
-	}
-	
 	//avoid flicker by drawing bar now instead of waiting for event loop to send
 	//paintEvent to bar.
 	barPaintEvent(e);
