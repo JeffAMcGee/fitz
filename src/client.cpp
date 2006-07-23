@@ -41,7 +41,7 @@
 //X11
 #include <X11/Xlib.h>
 
-kdbgstream& operator<<( kdbgstream &kd, const QPointArray &pa ) {
+/*kdbgstream& operator<<( kdbgstream &kd, const QPointArray &pa ) {
     kd << "[";
 	for(unsigned int i=0;i<pa.size();i++) {
 		kd << pa.point(i);
@@ -50,7 +50,7 @@ kdbgstream& operator<<( kdbgstream &kd, const QPointArray &pa ) {
 	}
 	kd << "]";
     return kd;
-}
+}*/
 
 namespace Fitz {
 
@@ -75,24 +75,17 @@ Client::~Client() {
 }
 
 //constants for init()
-const char *const  fitzLabel =
-"<b><center>Fitz preview</center></b><br />"
-
-"<p><center>Warning: Fitz may work poorly with some programs.  See BUGS for "
-"details.</center></p><br />";
-
 int Client::framesize_ = 3;
 QRegion Client::headWinMask;
 QRegion Client::headDiaMask;
 QRegion Client::tailMask;
 QRegion Client::cornerMask;
 
-
 // Actual initializer for class
 void Client::init() {
 	createMainWidget(WResizeNoErase | WRepaintNoErase);
 	widget()->installEventFilter(this);
-	widget()->setBackgroundMode(NoBackground);
+	widget()->setBackgroundMode(Qt::NoBackground);
 	
 	kdDebug()<<"init() "<<caption()<<endl;
 
@@ -123,7 +116,7 @@ void Client::init() {
 		dialogType = dialog = !isActive();
 		barInit();
 		
-		label = new QLabel(i18n(fitzLabel),	widget());
+		label = new QLabel(i18n("<b><center>Fitz preview</center></b>"), widget());
 		mainLayout->addWidget(label,2,1);
 	} else {
 		NET::WindowType type = windowType(
@@ -151,6 +144,7 @@ void Client::init() {
 		options()->titleButtonsLeft() + " " +
 		options()->titleButtonsRight()
 	);
+	updateColors();
 }
 
 void Client::barInit() {
@@ -158,7 +152,7 @@ void Client::barInit() {
 	slow = false;
 	togglingDialog = false;
 
-	bar->setBackgroundMode(NoBackground);
+	bar->setBackgroundMode(Qt::NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed));
 	
 	box = new QBoxLayout(bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
@@ -173,9 +167,6 @@ void Client::barInit() {
 		
 	bar->setMouseTracking(true);
 	bar->installEventFilter(this);
-
-	if(isPreview())
-		bar->clearMask();
 }
 
 //this function finds the parent window of the window decoration widget and
@@ -193,7 +184,7 @@ void Client::reparent() {
 		XFree(children);
 	
 	XReparentWindow(disp, deco, parent, 0, 0);
-	kdDebug()<<"reparent()"<<endl;
+	kdDebug()<<"reparent() "<<caption()<<geometry()<<deco<<endl;
 	resizeBar();
 }
 
@@ -315,7 +306,7 @@ void Client::maximizeFull() {
 // window active state has changed
 void Client::activeChange() {
 	emit activeChanged(isActive());
-	widget()->repaint(false);
+	updateColors();
 }
 
 // Called when desktop/sticky changes
@@ -349,6 +340,15 @@ void Client::captionChange() {
 		kdDebug()<<"captionChange()"<<endl;
 		resizeBar();
 	}
+}
+
+void Client::updateColors() {
+	fgc = KDecoration::options()->color(KDecoration::ColorFont,isActive());
+	bgc = KDecoration::options()->color(KDecoration::ColorTitleBar,isActive());
+	//widget()->setPaletteBackgroundColor(bgc);
+	//bar->setPaletteBackgroundColor(bgc);
+	redrawTitle();
+	widget()->repaint(false);
 }
 
 int Client::redrawTitle() {
@@ -434,6 +434,11 @@ void Client::resizeButtonPressed() {
 	performWindowOperation(KDecoration::ResizeOp);
 }
 
+void Client::reset(unsigned long changed) {
+	kdDebug()<<"reset()"<<endl;
+	if(changed & SettingColors)
+		updateColors();
+}
 
 ///////////////////////////////////////////////////////////
 // size stuff
@@ -453,15 +458,16 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	if(togglingDialog) return;
+	kdDebug()<<"resize()"<<size<<togglingDialog<<heightBeforeToggle<<endl;
+	if(togglingDialog && heightBeforeToggle > size.height())
+		return;
 	widget()->resize(size);
-	//kdDebug()<<"resize()"<<endl;
 	resizeBar();
 }
 
 void Client::resizeBar() {
-	//kdDebug()<<"resizeBar() : "<<caption()<<geometry()
-	//	<<bar->geometry()<<dialog<<endl;
+	kdDebug()<<"resizeBar() : "<<caption()<<geometry()
+		<<bar->geometry()<<dialog<<frameGeom()<<endl;
 	
 	int newWidth = width() -barWidth();
 	
@@ -571,6 +577,11 @@ void Client::doMask() {
 		if(!dialog)
 			setParentMask(bar,mask);
 	}
+	kdDebug()<<"doMask() : "<<caption()
+		<<" frame:"<<frameGeom()
+		<<" out:"<<outside.boundingRect()
+		<<" in:"<<insideMask.boundingRect()
+		<<" mask:"<<mask.boundingRect()<<endl;
 }
 
 void Client::toggleDialog() {
@@ -578,12 +589,18 @@ void Client::toggleDialog() {
 	
 	box->invalidate();
 	
+	kdDebug()<<"toggleDialog() : "<<caption()<<endl;
+	
 	//tell kwin about our change in borders()
 	if( !isShade() ) {
+		heightBeforeToggle = widget()->height();
+		//int change = (dialog?-1:1)*(framesize_-BTN_HEIGHT+4);
+		//QSize s = widget()->size() + QSize(0,change);
 		togglingDialog = 1;
 		setShade(1);
 		setShade(0);
 		togglingDialog = 0;
+		//widget()->resize(s);
 		return;
 	}
 	return;
@@ -603,6 +620,7 @@ int Client::barWidth() const {
 }
 
 QRect Client::frameGeom() const {
+	kdDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
 	QRect frame = widget()->geometry();
 	if(isPreview()) {
 		frame.moveTop(0);
@@ -647,11 +665,12 @@ void Client::setBorderSize(BorderSize b) {
 	makeStaticMasks();
 }
 
+void Client::makeStaticMasks() {
 #include "corner.xbm"	
 #include "head_dia.xbm"	
 #include "head_win.xbm"	
 #include "tail.xbm"	
-void Client::makeStaticMasks() {
+	
 	cornerMask = QRegion(QBitmap(corner_width,corner_height,corner_bits,true));
 	tailMask = QRegion(QBitmap(tail_width,tail_height,tail_bits,true));
 	
@@ -828,13 +847,14 @@ void Client::mousePressEvent(QMouseEvent *e) {
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
 		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
-		! isShade()
+		! isShade() &&
+		! isPreview()
 	) {
 		//this is a left mouse button press that is not inside the button bar
 		assert(event == 0);
 		event=new QMouseEvent(
-				e->type(), e->pos(),
-				e->globalPos(),e->button(),e->state()
+			e->type(), e->pos(),
+			e->globalPos(), e->button(), e->state()
 		);
 	} else {
 		processMousePressEvent(e);
@@ -848,22 +868,12 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 		delete event;
 		event=0;
 		
-		int x,y,w,h;
-		
-		if(isPreview()){
-			QWidget *d=widget();
-			x=e->x();
-			y=e->y();
-			w=d->width();
-			h=d->height();
-		} else {
-			QWidget *d = QApplication::desktop();
-			x=e->globalX();
-			y=e->globalY();
-			w=d->width();
-			h=d->height();
-		}
-		bool willMove=false;
+		QWidget *d = QApplication::desktop();
+		int x = e->globalX();
+		int y = e->globalY();
+		int w = d->width();
+		int h = d->height();
+		bool willMove = false;
 
 		if(x<framesize_) { //left
 			 x=framesize_+6;
@@ -882,13 +892,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 			y=h-framesize_-6;
 			willMove=true;
 		}
-	
-		if(isPreview()) {
-			QPoint p = widget()->mapToGlobal(QPoint(x,y));
-			x=p.x();
-			y=p.y();
-		}
-		
+
 		if(willMove) {
 			QCursor::setPos(x,y);
 			Fitz::FakeMouse::click();
@@ -928,22 +932,13 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
-	//kdDebug()<<"paintEvent() : "<<caption()<<endl;
+	//kdDebug()<<"paintEvent() : "<<caption()<<e->rect()<<endl;
 
-	//check for color change
-	QColor fg = KDecoration::options()->color(KDecoration::ColorFont,isActive());
-	QColor bg = KDecoration::options()->color(KDecoration::ColorTitleBar,isActive());
-	if(bg!=bgc || fg!=fgc) {
-		fgc=fg;
-		bgc=bg;
-		redrawTitle();
-	}
-	
 	QPainter painter(widget());
 	painter.setPen(bgc);
 	
 	// draw frame
-	painter.fillRect(0,0,width(),height(),bgc);
+	painter.fillRect(e->rect(),bgc);
 	
 	//fill in empty space
 	if((isPreview() || isShade()) && !dialog) {
@@ -967,6 +962,8 @@ void Client::barPaintEvent(QPaintEvent*) {
 	if( !fitzFactoryInitialized()) return;
 	
 	QPainter painter(bar);
+	painter.fillRect(0,0,bar->width(),bar->height(),bgc);
+	
 	QPoint origin = titleSpace->geometry().topLeft();
 	painter.drawPixmap(
 		origin.x(), origin.y(), *titleBar, 0, 0,

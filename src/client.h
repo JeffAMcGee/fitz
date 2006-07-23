@@ -46,6 +46,7 @@ class Client : public KDecoration {
 	virtual void shadeChange();
 
 	virtual void borders(int &l, int &r, int &t, int &b) const;
+	virtual void reset(unsigned long changed);
 	virtual void resize(const QSize &size);
 	virtual void resizeBar();
 	virtual QSize minimumSize() const;
@@ -72,6 +73,7 @@ class Client : public KDecoration {
 	int redrawTitle();
 	void doMask();
 	void toggleDialog();
+	void updateColors();
 	
 	void addButton(BtnType::Type b, const char *name,
 			const char* signal, const char* slot);
@@ -108,6 +110,7 @@ class Client : public KDecoration {
 	bool dialog;
 	bool dialogType;
 	bool togglingDialog;
+	int heightBeforeToggle;
 	QRegion insideMask;
 	QSpacerItem *headSpace;
 	QSpacerItem *titleSpace;

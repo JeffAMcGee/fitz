@@ -18,7 +18,7 @@ namespace Fitz {
 enum {
 	BTN_HEIGHT=15,
 	BTN_WIDTH=BTN_HEIGHT*2,
-	SPACERSIZE = BTN_WIDTH
+	SPACERSIZE = BTN_WIDTH/2
 };
 
 bool fitzFactoryInitialized();
