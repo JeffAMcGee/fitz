@@ -14,7 +14,5 @@ konsole - some programs (including lynx) use that corner of the console.  This
 old-school X programs that put the help menu on the right side.  It's been
 	several years since I've seen one of these on Linux.
 
-/*=== Border Color ===========================================================*/
-In this style, the frame, buttons, and title bar are all kind of the same thing
-- they don't look right unless they are the same color.  - Use the title bar
-colors for the button bar and make the frame a different color.
+/*=== Grabbing the Mouse =====================================================*/
+Fitz works poorly with kmag.  I think they both try to grab the mouse.

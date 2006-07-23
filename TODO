@@ -1,9 +1,11 @@
-0.5:
-make dialog titlebar smaller on small windows -- the minimum size is too large
-	for dialog windows
-figure out where the menubar ends
+1.0:
+check for bugs
+clean it up
+follow kwin standards
+create lots of packages
 
 future: (these may never happen)
+figure out where the menubar ends
 make the frame and the button bar different colors
 allow fitz style click on non-maximized windows
 	Trap the mouse inside a window until the user taps the edge twice. This
