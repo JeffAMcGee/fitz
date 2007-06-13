@@ -1,4 +1,4 @@
-# #!/usr/bin/make -C /var/deb/release-fitz/ -f 
+# #!/usr/bin/make -C /dist/release-fitz/ -f 
 # 
 # the release makefile
 # -------------------
@@ -8,11 +8,11 @@
 # License. See the file "COPYING" for the exact licensing terms.
 ##############################################################################
 
-# This script dowloads fitz from cvs, makes a tarball for release, and then
+# This script dowloads fitz from svn, makes a tarball for release, and then
 # tests it.  The chance that this script works on someone else's computer is
 # negligible.  You're going to need to edit it some.
-ver:=0.3
-tag:=fitz-0_3
+ver:=0.4
+tag:=fitz-0_4
 pkg:=fitz-$(ver)
 tbz:=$(pkg).tar.bz2
 deb:=fitz_$(ver)-1_i386.deb
@@ -28,7 +28,7 @@ co:
 	#download and clean fitz
 	#cvs -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz login
 	#cvs -z3 -d:pserver:anonymous\@cvs.sourceforge.net:/cvsroot/fitz co -P fitz
-	cvs -z3 -d:ext:nerd4christ@cvs.sourceforge.net:/cvsroot/fitz export -r $(tag) -d $(pkg) fitz
+	svn https://fitz.svn.sourceforge.net/svnroot/fitz/fitz export $(pkg)
 	cd $(pkg) && make -f Makefile.cvs
 	cd $(pkg) && rm -rf supermake kwintheme.html release Makefile.cvs testfitz design.png templates autom4te.cache
 
