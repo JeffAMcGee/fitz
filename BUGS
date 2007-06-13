@@ -2,6 +2,16 @@ These are known bugs in Fitz.  Most of them will be fixed eventually. There are
 also unknown bugs, which probably won't be fixed until someone like you finds
 them and tells me about it or fixes it themselves. :-)
 
+/*=== Drawing issues =========================================================*/
+The bottom 20 pixels may be cut off on dialog windows.  This is because the
+toggleDialog() code is still broken.   Also, when you first switch to fitz, it
+may draw some applications wrong.  If you move or resize the window that is
+messed up, this problem will go away.
+
+/*=== Beryl ==================================================================*/
+Fitz does not work with Beryl.  Beryl does not like the window decoration on
+top of the window.  This is probably also true for compviz and kwin 4.0.
+
 /*=== Scribbling on Other Applications =======================================*/
 Fitz assumes that the top-right corner is empty. If an application actually puts
 something there, Fitz will cover it up, which will look bad and may hurt
