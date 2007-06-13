@@ -458,7 +458,7 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	kdDebug()<<"resize()"<<size<<togglingDialog<<heightBeforeToggle<<endl;
+	kdDebug()<<"resize() "<<size<<togglingDialog<<heightBeforeToggle<<endl;
 	if(togglingDialog && heightBeforeToggle > size.height())
 		return;
 	widget()->resize(size);
@@ -594,13 +594,14 @@ void Client::toggleDialog() {
 	//tell kwin about our change in borders()
 	if( !isShade() ) {
 		heightBeforeToggle = widget()->height();
-		//int change = (dialog?-1:1)*(framesize_-BTN_HEIGHT+4);
+		//int change = (dialog?-1:1)*(framesize_-(BTN_HEIGHT+4);
 		//QSize s = widget()->size() + QSize(0,change);
+		//kdDebug()<<" "<<s<<" "<<change<<endl;
+
 		togglingDialog = 1;
 		setShade(1);
 		setShade(0);
 		togglingDialog = 0;
-		//widget()->resize(s);
 		return;
 	}
 	return;
@@ -620,7 +621,7 @@ int Client::barWidth() const {
 }
 
 QRect Client::frameGeom() const {
-	kdDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
+	//kdDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
 	QRect frame = widget()->geometry();
 	if(isPreview()) {
 		frame.moveTop(0);

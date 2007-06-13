@@ -1,4 +1,4 @@
-# #!/usr/bin/make -C /dist/release-fitz/ -f 
+#!/usr/bin/make -C /dist/release-fitz/ -f 
 # 
 # the release makefile
 # -------------------
