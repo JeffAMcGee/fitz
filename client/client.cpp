@@ -22,11 +22,21 @@
 #include <qfont.h>
 #include <qbitmap.h>
 #include <qpainter.h>
-#include <qmemarray.h>
+#include <q3memarray.h>
 #include <qtooltip.h>
 #include <qcursor.h>
 #include <qapplication.h>
 #include <qvariant.h> //needed for SuSE rpm
+//Added by qt3to4:
+#include <QDesktopWidget>
+#include <Q3BoxLayout>
+#include <Q3GridLayout>
+#include <QPixmap>
+#include <QMouseEvent>
+#include <QEvent>
+#include <QShowEvent>
+#include <QPaintEvent>
+#include <QWheelEvent>
 
 //fitz
 #include "fitz.h"
@@ -83,13 +93,15 @@ QRegion Client::cornerMask;
 
 // Actual initializer for class
 void Client::init() {
-	createMainWidget(WResizeNoErase | WRepaintNoErase);
+	createMainWidget();
 	widget()->installEventFilter(this);
+	//FIXME: I'm not sure that both of these are needed
+	widget()->setAttribute(Qt::WA_NoSystemBackground);
 	widget()->setBackgroundMode(Qt::NoBackground);
 	
-	kdDebug()<<"init() "<<caption()<<endl;
+	kDebug()<<"init() "<<caption()<<endl;
 
-	mainLayout = new QGridLayout(widget(), 4, 3);
+	mainLayout = new Q3GridLayout(widget(), 4, 3);
 	/*The mainLayout looks like this:
 
 	  *         *
@@ -137,7 +149,7 @@ void Client::init() {
 			QTimer::singleShot(0,this,SLOT(maximizeFull()));
 	}
 	
-	mainLayout->addMultiCellWidget(bar,1,1,1,2,AlignRight);
+	mainLayout->addMultiCellWidget(bar,1,1,1,2,Qt::AlignRight);
 
 	// setup titlebar buttons
 	addButtons(
@@ -155,7 +167,7 @@ void Client::barInit() {
 	bar->setBackgroundMode(Qt::NoBackground);
 	bar->setSizePolicy(QSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed));
 	
-	box = new QBoxLayout(bar, QBoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
+	box = new Q3BoxLayout(bar, Q3BoxLayout::LeftToRight, 0, 0, "Fitz::Bar Layout");
 
 	// setup titlebar buttons
 	for (int n=0; n<BtnType::COUNT; n++) {
@@ -184,7 +196,7 @@ void Client::reparent() {
 		XFree(children);
 	
 	XReparentWindow(disp, deco, parent, 0, 0);
-	kdDebug()<<"reparent() "<<caption()<<geometry()<<deco<<endl;
+	kDebug()<<"reparent() "<<caption()<<geometry()<<deco<<endl;
 	resizeBar();
 }
 
@@ -193,8 +205,8 @@ void Client::reparent() {
 
 // Add buttons to title layout
 void Client::addButtons(const QString& s) {
-	for (unsigned i=0; i < s.length(); i++) {
-		switch (s[i]) {
+	for (int i=0; i < s.length(); i++) {
+		switch (s[i].toAscii()) {
 
 	// Buttons
 		  case 'M': // Menu button
@@ -266,7 +278,7 @@ void Client::addButtons(const QString& s) {
 			break;
 
 		  default:
-			kdDebug()<<"Unknown Button: "<<char(s[i])<<endl;
+			kDebug()<<"Unknown Button: "<<s[i]<<endl;
 			break;
 		}
 	}
@@ -337,7 +349,7 @@ void Client::captionChange() {
 	bar->update();
 	
 	if(oldWidth) {
-		kdDebug()<<"captionChange()"<<endl;
+		kDebug()<<"captionChange()"<<endl;
 		resizeBar();
 	}
 }
@@ -377,7 +389,7 @@ int Client::redrawTitle() {
 	p.setPen(fgc);
 	p.setFont(font);
 	p.fillRect(0,0,width,BTN_HEIGHT,bgc);
-	p.drawText(0,0,width,BTN_HEIGHT,AlignLeft|AlignVCenter,file);
+	p.drawText(0,0,width,BTN_HEIGHT,Qt::AlignLeft|Qt::AlignVCenter,file);
 	p.end();
 	
 	return width;
@@ -402,10 +414,10 @@ void Client::shadeChange() { ; }
 void Client::maxButtonPressed() {
 	if (button[BtnType::MAX]) {
 		switch (button[BtnType::MAX]->lastMousePress()) {
-		  case MidButton:
+		  case Qt::MidButton:
 			maximize(maximizeMode() ^ KDecoration::MaximizeVertical);
 			break;
-		  case RightButton:
+		  case Qt::RightButton:
 			maximize(maximizeMode() ^ KDecoration::MaximizeHorizontal);
 			break;
 		  default:
@@ -435,7 +447,7 @@ void Client::resizeButtonPressed() {
 }
 
 void Client::reset(unsigned long changed) {
-	kdDebug()<<"reset()"<<endl;
+	kDebug()<<"reset()"<<endl;
 	if(changed & SettingColors)
 		updateColors();
 }
@@ -446,7 +458,7 @@ void Client::reset(unsigned long changed) {
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
 	l = r = t = b = framesize_;
-	kdDebug()<<"borders()"<<endl;
+	kDebug()<<"borders()"<<endl;
 	if(isShade()) {
 		t=BTN_HEIGHT+5;
 		b=0;
@@ -458,7 +470,7 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	kdDebug()<<"resize() "<<size<<togglingDialog<<heightBeforeToggle<<endl;
+	kDebug()<<"resize() "<<size<<togglingDialog<<heightBeforeToggle<<endl;
 	if(togglingDialog && heightBeforeToggle > size.height())
 		return;
 	widget()->resize(size);
@@ -466,7 +478,7 @@ void Client::resize(const QSize &size) {
 }
 
 void Client::resizeBar() {
-	kdDebug()<<"resizeBar() : "<<caption()<<geometry()
+	kDebug()<<"resizeBar() : "<<caption()<<geometry()
 		<<bar->geometry()<<dialog<<frameGeom()<<endl;
 	
 	int newWidth = width() -barWidth();
@@ -520,7 +532,7 @@ void Client::doMask() {
 	enum{LEFT=1,RIGHT=2,TOP=4,BOTTOM=8};
 	int edges = 0;
 	if(!isPreview()) {
-		QWidget *d = QApplication::desktop();
+		QDesktopWidget *d = QApplication::desktop();
 		QRect r = widget()->geometry();
 		QPoint tl = widget()->mapToGlobal(r.topLeft());
 		QPoint br = widget()->mapToGlobal(r.bottomRight());
@@ -577,7 +589,7 @@ void Client::doMask() {
 		if(!dialog)
 			setParentMask(bar,mask);
 	}
-	kdDebug()<<"doMask() : "<<caption()
+	kDebug()<<"doMask() : "<<caption()
 		<<" frame:"<<frameGeom()
 		<<" out:"<<outside.boundingRect()
 		<<" in:"<<insideMask.boundingRect()
@@ -589,14 +601,14 @@ void Client::toggleDialog() {
 	
 	box->invalidate();
 	
-	kdDebug()<<"toggleDialog() : "<<caption()<<endl;
+	kDebug()<<"toggleDialog() : "<<caption()<<endl;
 	
 	//tell kwin about our change in borders()
 	if( !isShade() ) {
 		heightBeforeToggle = widget()->height();
 		//int change = (dialog?-1:1)*(framesize_-(BTN_HEIGHT+4);
 		//QSize s = widget()->size() + QSize(0,change);
-		//kdDebug()<<" "<<s<<" "<<change<<endl;
+		//kDebug()<<" "<<s<<" "<<change<<endl;
 
 		togglingDialog = 1;
 		setShade(1);
@@ -621,7 +633,7 @@ int Client::barWidth() const {
 }
 
 QRect Client::frameGeom() const {
-	//kdDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
+	//kDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
 	QRect frame = widget()->geometry();
 	if(isPreview()) {
 		frame.moveTop(0);
@@ -640,7 +652,7 @@ QSize Client::minimumSize() const {
 }
 
 void Client::setBorderSize(BorderSize b) {
-	kdDebug()<<"setBorderSize() : "<<endl;
+	kDebug()<<"setBorderSize() : "<<endl;
 	switch(b) {
 	  case BorderTiny:
 		framesize_ = 1;
@@ -704,7 +716,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return barEventFilter(obj, e);
 	if (obj != widget())
 		return false;
-	//kdDebug()<<"eventFilter("<<e->type()<<") : "<<caption()<<endl;
+	//kDebug()<<"eventFilter("<<e->type()<<") : "<<caption()<<endl;
  
 	switch (e->type()) {
 	  case QEvent::MouseButtonPress:
@@ -728,7 +740,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return true;
 	  case QEvent::Resize:
 		if(isPreview()) {
-			kdDebug()<<"eventFilter"<<endl;
+			kDebug()<<"eventFilter"<<endl;
 			resizeBar();
 			return true;
 		}
@@ -748,7 +760,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 // the bar event filter just handles mouse junk
 bool Client::barEventFilter(QObject *obj, QEvent *e) {
 	if (obj != bar) return false;
-	//kdDebug()<<"Bar::barEventFilter("<<e->type()<<") : "<<caption()<<endl;
+	//kDebug()<<"Bar::barEventFilter("<<e->type()<<") : "<<caption()<<endl;
 	QMouseEvent *me;
 	QWheelEvent *we;
 	QEvent *event;
@@ -820,7 +832,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	const int corner = 32;
 	Position pos = PositionCenter;
 	
-	//kdDebug()<<"mousePosition("<<point<<") : "<<caption()<<endl;
+	//kDebug()<<"mousePosition("<<point<<") : "<<caption()<<endl;
 
 	int x = point.x();
 	int y = point.y();
@@ -844,7 +856,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 
 // Deal with mouse click
 void Client::mousePressEvent(QMouseEvent *e) {
-	//kdDebug()<<"mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<"mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
 		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
@@ -863,13 +875,13 @@ void Client::mousePressEvent(QMouseEvent *e) {
 }
 
 void Client::mouseReleaseEvent(QMouseEvent *e) {
-	//kdDebug()<<"mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<"mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 
 	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton) && event !=0) {
 		delete event;
 		event=0;
 		
-		QWidget *d = QApplication::desktop();
+		QDesktopWidget *d = QApplication::desktop();
 		int x = e->globalX();
 		int y = e->globalY();
 		int w = d->width();
@@ -902,7 +914,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 }
 
 void Client::mouseLeaveEvent(QMouseEvent * /*e*/) {
-	//kdDebug()<<"mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<"mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
 	
 	if(event!=0) {
 		processMousePressEvent(event);
@@ -911,13 +923,9 @@ void Client::mouseLeaveEvent(QMouseEvent * /*e*/) {
 	}
 }
 
-#if KDE_IS_VERSION( 3, 4, 89 )
 void Client::wheelEvent(QWheelEvent *e) {
 	titlebarMouseWheelOperation( e->delta());
 }
-#else	
-void Client::wheelEvent(QWheelEvent* /*e*/) { ; }
-#endif	
 
 void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 	if(e->button() != Qt::LeftButton)
@@ -933,7 +941,7 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
-	//kdDebug()<<"paintEvent() : "<<caption()<<e->rect()<<endl;
+	//kDebug()<<"paintEvent() : "<<caption()<<e->rect()<<endl;
 
 	QPainter painter(widget());
 	painter.setPen(bgc);
@@ -944,8 +952,8 @@ void Client::paintEvent(QPaintEvent* e) {
 	//fill in empty space
 	if((isPreview() || isShade()) && !dialog) {
 		QColor widgetBg = widget()->colorGroup().background();
-		QMemArray<QRect> ar = insideMask.rects();
-		QMemArray<QRect>::Iterator it;
+		Q3MemArray<QRect> ar = insideMask.rects();
+		Q3MemArray<QRect>::Iterator it;
 
 		//Why isn't there a painter.fillRegion()?
 		for(it = ar.begin(); it != ar.end(); ++it) {

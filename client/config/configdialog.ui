@@ -1,36 +1,33 @@
-<!DOCTYPE UI><UI version="3.3" stdsetdef="1">
-<class>ConfigDialog</class>
-<widget class="QWidget">
-    <property name="name">
-        <cstring>ConfigDialog</cstring>
+<ui version="4.0" stdsetdef="1" >
+  <author></author>
+  <comment></comment>
+  <exportmacro></exportmacro>
+  <class>ConfigDialog</class>
+  <widget class="QWidget" name="ConfigDialog" >
+    <property name="geometry" >
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>235</width>
+        <height>108</height>
+      </rect>
     </property>
-    <property name="geometry">
-        <rect>
-            <x>0</x>
-            <y>0</y>
-            <width>235</width>
-            <height>108</height>
-        </rect>
+    <property name="windowTitle" >
+      <string>Config Dialog</string>
     </property>
-    <property name="caption">
-        <string>Config Dialog</string>
-    </property>
-    <hbox>
-        <property name="name">
-            <cstring>unnamed</cstring>
-        </property>
-        <widget class="QCheckBox">
-            <property name="name">
-                <cstring>autoMaxCheckbox</cstring>
-            </property>
-            <property name="text">
-                <string>&amp;Maximize application windows</string>
-            </property>
-            <property name="accel">
-                <string>Alt+M</string>
-            </property>
+    <layout class="QHBoxLayout" >
+      <item>
+        <widget class="QCheckBox" name="autoMaxCheckbox" >
+          <property name="text" >
+            <string>&amp;Maximize application windows</string>
+          </property>
+          <property name="shortcut" >
+            <string>Alt+M</string>
+          </property>
         </widget>
-    </hbox>
-</widget>
-<layoutdefaults spacing="6" margin="11"/>
-</UI>
+      </item>
+    </layout>
+  </widget>
+  <layoutdefault spacing="6" margin="11" />
+  <pixmapfunction>qPixmapFromMimeSource</pixmapfunction>
+</ui>

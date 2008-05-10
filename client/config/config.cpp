@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////
-// config.h
+// config.cpp
 // -------------------
 // Fitz window decoration for KDE
 // -------------------
@@ -20,7 +20,14 @@
 
 //fitz
 #include "config.h"
-#include "configdialog.h"
+#include "ui_configdialog.h"
+
+class ConfigDialogWidget : public QWidget, public Ui::ConfigDialog {
+public:
+	ConfigDialogWidget( QWidget *parent ) : QWidget( parent ) {
+		setupUi( this );
+	}
+};
 
 // Constructor
 Config::Config(KConfig* /*config*/, QWidget* parent)
@@ -28,11 +35,12 @@ Config::Config(KConfig* /*config*/, QWidget* parent)
 {
 	// create the configuration object
 	config = new KConfig("kwinfitzrc");
-	KGlobal::locale()->insertCatalogue("kwin_fitz_config");
+	KGlobal::locale()->insertCatalog("kwin_fitz_config");
 
 	// create and show the configuration dialog
-	dialog = new ConfigDialog(parent);
+	dialog = new ConfigDialogWidget(parent);
 	dialog->show();
+
 
 	// load the configuration
 	load(config);
@@ -51,18 +59,18 @@ Config::~Config() {
 
 // Load configuration data
 void Config::load(KConfig*) {
-	config->setGroup("General");
+	KConfigGroup cg(config, "General");
 	
-	bool max = config->readBoolEntry("autoMax", false);
+	bool max = cg.readEntry("autoMax", false);
 	dialog->autoMaxCheckbox->setChecked(max);
 }
 
 // Save configuration data
 void Config::save(KConfig*) {
-	config->setGroup("General");
+	KConfigGroup cg(config, "General");
 	
 	bool max = dialog->autoMaxCheckbox->isChecked();
-	config->writeEntry("autoMax", max);
+	cg.writeEntry("autoMax", max);
 	
 	config->sync();
 }
@@ -76,7 +84,7 @@ void Config::defaults()  {
 
 // Plugin Stuff
 extern "C" {
-	QObject* allocate_config(KConfig* config, QWidget* parent) {
+	KDE_EXPORT QObject* allocate_config(KConfig* config, QWidget* parent) {
 		return (new Config(config, parent));
 	}
 }

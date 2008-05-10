@@ -17,7 +17,7 @@
 #include <qobject.h>
 
 class KConfig;
-class ConfigDialog;
+class ConfigDialogWidget;
 
 class Config : public QObject
 {
@@ -36,7 +36,7 @@ public slots:
 
 private:
 	KConfig *config;
-	ConfigDialog *dialog;
+	ConfigDialogWidget *dialog;
 };
 
 #endif // FITZCONFIG_H

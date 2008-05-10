@@ -15,11 +15,21 @@
 #define FITZCLIENT_H
 
 #include <kdecoration.h>
-#include <qpointarray.h>
+#include <q3pointarray.h>
+//Added by qt3to4:
+#include <QMoveEvent>
+#include <QShowEvent>
+#include <QWheelEvent>
+#include <QPaintEvent>
+#include <Q3GridLayout>
+#include <QPixmap>
+#include <QLabel>
+#include <QMouseEvent>
+#include <QEvent>
 #include "fitz.h"
 
-class QBoxLayout;
-class QGridLayout;
+class Q3BoxLayout;
+class Q3GridLayout;
 class QSpacerItem;
 class QPixmap;
 class QWidget;
@@ -106,7 +116,7 @@ class Client : public KDecoration {
 	
 	//from bar
 	Button *button[BtnType::COUNT];
-	QBoxLayout *box;
+	Q3BoxLayout *box;
 	bool dialog;
 	bool dialogType;
 	bool togglingDialog;
@@ -117,7 +127,7 @@ class Client : public KDecoration {
 	QPixmap *titleBar;
 	QColor bgc;
 	QColor fgc;
-	QGridLayout *mainLayout;
+	Q3GridLayout *mainLayout;
 	QLabel* label;
 	
 	static int framesize_;

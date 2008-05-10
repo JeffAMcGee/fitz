@@ -20,6 +20,9 @@
 #include <qlabel.h>
 #include <qpainter.h>
 #include <qtooltip.h>
+//Added by qt3to4:
+#include <QEvent>
+#include <QMouseEvent>
 
 //fitz
 #include "fitz.h"
@@ -32,12 +35,12 @@ namespace Fitz {
 // Constructor
 Button::Button(QWidget *parent, const char *name,
 		KDecoration* c, BtnType::Type t, bool act)
-	: QButton(parent, name), type(t),
+	: QAbstractButton(parent, name), type(t),
 		deco(0), lastmouse(0), client(c), state(0)
 {
-	setBackgroundMode(NoBackground);
+	setBackgroundMode(Qt::NoBackground);
 	setFixedSize(BTN_WIDTH, BTN_HEIGHT);
-	setCursor(arrowCursor);
+	setCursor(Qt::arrowCursor);
 	setPixmap(0,act);
 	QToolTip::add(this, i18n(name));
 }
@@ -80,13 +83,13 @@ QSize Button::sizeHint() const {
 // Mouse has entered the button
 void Button::enterEvent(QEvent *e) {
 	// if we wanted to do mouseovers, we would keep track of it here
-	QButton::enterEvent(e);
+	QAbstractButton::enterEvent(e);
 }
 
 // Mouse has left the button
 void Button::leaveEvent(QEvent *e) {
 	// if we wanted to do mouseovers, we would keep track of it here
-	QButton::leaveEvent(e);
+	QAbstractButton::leaveEvent(e);
 }
 
 // Button has been pressed
@@ -94,13 +97,13 @@ void Button::mousePressEvent(QMouseEvent* e) {
 	lastmouse = e->button();
 
 	// translate and pass on mouse event
-	int button = LeftButton;
-	if ((type != BtnType::MAX) && (e->button() != LeftButton)) {
-		button = NoButton; // middle & right buttons inappropriate
+	int button = Qt::LeftButton;
+	if ((type != BtnType::MAX) && (e->button() != Qt::LeftButton)) {
+		button = Qt::NoButton; // middle & right buttons inappropriate
 	}
 	QMouseEvent me(e->type(), e->pos(), e->globalPos(),
 				   button, e->state());
-	QButton::mousePressEvent(&me);
+	QAbstractButton::mousePressEvent(&me);
 }
 
 // Button has been released
@@ -108,12 +111,17 @@ void Button::mouseReleaseEvent(QMouseEvent* e) {
 	lastmouse = e->button();
 
 	// translate and pass on mouse event
-	int button = LeftButton;
-	if ((type != BtnType::MAX) && (e->button() != LeftButton)) {
-		button = NoButton; // middle & right buttons inappropriate
+	int button = Qt::LeftButton;
+	if ((type != BtnType::MAX) && (e->button() != Qt::LeftButton)) {
+		button = Qt::NoButton; // middle & right buttons inappropriate
 	}
 	QMouseEvent me(e->type(), e->pos(), e->globalPos(), button, e->state());
-	QButton::mouseReleaseEvent(&me);
+	QAbstractButton::mouseReleaseEvent(&me);
+}
+
+void Button::paintEvent(QPaintEvent *) {
+	QPainter painter(this);
+	drawButton(&painter);
 }
 
 // Draw the button

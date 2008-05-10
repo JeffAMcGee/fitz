@@ -12,10 +12,13 @@
 
 //kde
 #include <kconfig.h>
+#include <kconfiggroup.h>
 #include <kdebug.h>
 
 //qt
 #include <qtimer.h>
+//Added by qt3to4:
+#include <QPixmap>
 
 #include "fitz.h"
 #include "client.h"
@@ -29,7 +32,7 @@ namespace Fitz {
 bool Factory::initialized_ = false;
 bool Factory::autoMax_ = false;
 
-extern "C" KDecorationFactory* create_factory()
+extern "C" KDE_EXPORT KDecorationFactory* create_factory()
 {
 	return new Fitz::Factory();
 }
@@ -37,7 +40,7 @@ extern "C" KDecorationFactory* create_factory()
 
 // Constructor
 Factory::Factory() {
-	kdDebug()<<"Factory::Factory()"<<endl;
+	kDebug()<<"Factory::Factory()"<<endl;
 	readConfig();
 	initialized_ = true;
 	cache= new ButtonCache();
@@ -82,24 +85,22 @@ bool Factory::reset(unsigned long changed) {
 // Read in the configuration file
 bool Factory::readConfig() {
 	// create a config object
-	KConfig config("kwinfitzrc");
-	config.setGroup("General");
-
-	autoMax_ = config.readBoolEntry("autoMax", false);
+	KConfig c( "kwinfitzrc" );
+	KConfigGroup cg(&c, "General");
+	autoMax_ = cg.readEntry("autoMax", false);
 	Client::setBorderSize(options()->preferredBorderSize(this));
 
 	return false;
 }
 
-QValueList< KDecoration::BorderSize > Factory::borderSizes() const {
-	kdDebug()<<"Factory::borderSizes()"<<endl;
-	return QValueList< BorderSize >() 
+QList< KDecoration::BorderSize > Factory::borderSizes() const {
+	kDebug()<<"Factory::borderSizes()"<<endl;
+	return QList< BorderSize >() 
 		<< BorderTiny << BorderNormal
 		<< BorderLarge << BorderVeryLarge;
 }
 
-bool Factory::supports( Ability ability ) {
-#if KDE_IS_VERSION( 3, 4, 0 )
+bool Factory::supports( Ability ability ) const {
 	switch(ability) {
 	  case AbilityAnnounceButtons:
 	  case AbilityButtonMenu:
@@ -117,7 +118,6 @@ bool Factory::supports( Ability ability ) {
 	  default:
 		return false;
 	}
-#endif	
 }
 
 const QPixmap* Factory::getPixmap(BtnType::Type t, int i, bool act) {

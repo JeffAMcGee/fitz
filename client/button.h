@@ -14,14 +14,17 @@
 #ifndef FITZBUTTON_H
 #define FITZBUTTON_H
 
-#include <qbutton.h>
+#include <QMouseEvent>
+#include <QAbstractButton>
+#include <QEvent>
+#include <QPixmap>
 #include "fitz.h"
 
 class KDecoration;
 
 namespace Fitz {
 
-class Button : public QButton {
+class Button : public QAbstractButton {
 	Q_OBJECT
 public:
 	Button(QWidget *parent, const char *name,
@@ -31,6 +34,7 @@ public:
 	QSize sizeHint() const;
 	int lastMousePress() const;
 	void reset();
+	void paintEvent(QPaintEvent *e);
 public slots:
 	void setPixmap(int i);
 	void setPixmap(bool b);

@@ -15,8 +15,10 @@
 #define FITZFACTORY_H
 
 #include <kdecorationfactory.h>
-#include <qvaluelist.h>
+#include <q3valuelist.h>
 #include <qobject.h>
+//Added by qt3to4:
+#include <QPixmap>
 
 class QTimer;
 
@@ -32,8 +34,8 @@ class Factory: public QObject, public KDecorationFactory {
 	virtual ~Factory();
 	virtual KDecoration *createDecoration(KDecorationBridge *b);
 	virtual bool reset(unsigned long changed);
-	virtual bool supports( Ability ability );
-	virtual QValueList< KDecoration::BorderSize > borderSizes() const;
+	virtual bool supports( Ability ability ) const;
+	virtual QList< KDecoration::BorderSize > borderSizes() const;
 
 	static bool autoMax();
 	
