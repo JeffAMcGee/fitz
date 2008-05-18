@@ -813,6 +813,7 @@ bool Client::barEventFilter(QObject *obj, QEvent *e) {
 		break;
 			
 	  case QEvent::Paint:
+		barPaintEvent(static_cast<QPaintEvent *>(e));
 		//widget's paintEvent took care of it for us
 		return true;
 
@@ -963,7 +964,7 @@ void Client::paintEvent(QPaintEvent* e) {
 
 	//avoid flicker by drawing bar now instead of waiting for event loop to send
 	//paintEvent to bar.
-	barPaintEvent(e);
+	//barPaintEvent(e);
 }
 
 
