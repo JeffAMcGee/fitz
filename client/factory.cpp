@@ -40,7 +40,7 @@ extern "C" KDE_EXPORT KDecorationFactory* create_factory()
 
 // Constructor
 Factory::Factory() {
-	kDebug()<<"Factory::Factory()"<<endl;
+	kDebug()<<endl;
 	readConfig();
 	initialized_ = true;
 	cache= new ButtonCache();
@@ -94,7 +94,7 @@ bool Factory::readConfig() {
 }
 
 QList< KDecoration::BorderSize > Factory::borderSizes() const {
-	kDebug()<<"Factory::borderSizes()"<<endl;
+	kDebug()<<endl;
 	return QList< BorderSize >() 
 		<< BorderTiny << BorderNormal
 		<< BorderLarge << BorderVeryLarge;

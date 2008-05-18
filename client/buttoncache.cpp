@@ -56,7 +56,7 @@ ButtonCache::~ButtonCache() {
 
 void ButtonCache::makePixmaps(){
 	QPixmap btnsPic;
-	kDebug() <<"ButtonCache::makePixmaps()"<<endl;
+	kDebug() <<endl;
 
 	for(int active=0;active<2;active++) {
 		QColor fg=KDecoration::options()->color(KDecoration::ColorFont, active);

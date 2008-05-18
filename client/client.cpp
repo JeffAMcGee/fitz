@@ -99,7 +99,7 @@ void Client::init() {
 	widget()->setAttribute(Qt::WA_NoSystemBackground);
 	widget()->setBackgroundMode(Qt::NoBackground);
 	
-	kDebug()<<"init() "<<caption()<<endl;
+	kDebug()<<caption()<<endl;
 
 	mainLayout = new Q3GridLayout(widget(), 4, 3);
 	/*The mainLayout looks like this:
@@ -196,7 +196,7 @@ void Client::reparent() {
 		XFree(children);
 	
 	XReparentWindow(disp, deco, parent, 0, 0);
-	kDebug()<<"reparent() "<<caption()<<geometry()<<deco<<endl;
+	kDebug()<<caption()<<geometry()<<deco<<endl;
 	resizeBar();
 }
 
@@ -349,7 +349,7 @@ void Client::captionChange() {
 	bar->update();
 	
 	if(oldWidth) {
-		kDebug()<<"captionChange()"<<endl;
+		kDebug()<<"about to resize"<<endl;
 		resizeBar();
 	}
 }
@@ -447,7 +447,6 @@ void Client::resizeButtonPressed() {
 }
 
 void Client::reset(unsigned long changed) {
-	kDebug()<<"reset()"<<endl;
 	if(changed & SettingColors)
 		updateColors();
 }
@@ -458,7 +457,7 @@ void Client::reset(unsigned long changed) {
 // Get the size of the borders
 void Client::borders(int &l, int &r, int &t, int &b) const {
 	l = r = t = b = framesize_;
-	kDebug()<<"borders()"<<endl;
+	kDebug()<<endl;
 	if(isShade()) {
 		t=BTN_HEIGHT+5;
 		b=0;
@@ -470,7 +469,7 @@ void Client::borders(int &l, int &r, int &t, int &b) const {
 
 // Called to resize or move the window
 void Client::resize(const QSize &size) {
-	kDebug()<<"resize() "<<size<<togglingDialog<<heightBeforeToggle<<endl;
+	kDebug()<<size<<togglingDialog<<heightBeforeToggle<<endl;
 	if(togglingDialog && heightBeforeToggle > size.height())
 		return;
 	widget()->resize(size);
@@ -478,7 +477,7 @@ void Client::resize(const QSize &size) {
 }
 
 void Client::resizeBar() {
-	kDebug()<<"resizeBar() : "<<caption()<<geometry()
+	kDebug()<<caption()<<geometry()
 		<<bar->geometry()<<dialog<<frameGeom()<<endl;
 	
 	int newWidth = width() -barWidth();
@@ -589,7 +588,7 @@ void Client::doMask() {
 		if(!dialog)
 			setParentMask(bar,mask);
 	}
-	kDebug()<<"doMask() : "<<caption()
+	kDebug()<<caption()
 		<<" frame:"<<frameGeom()
 		<<" out:"<<outside.boundingRect()
 		<<" in:"<<insideMask.boundingRect()
@@ -601,7 +600,7 @@ void Client::toggleDialog() {
 	
 	box->invalidate();
 	
-	kDebug()<<"toggleDialog() : "<<caption()<<endl;
+	kDebug()<<caption()<<endl;
 	
 	//tell kwin about our change in borders()
 	if( !isShade() ) {
@@ -633,7 +632,7 @@ int Client::barWidth() const {
 }
 
 QRect Client::frameGeom() const {
-	//kDebug()<<"frameGeom"<<geometry()<<widget()->geometry()<<endl;
+	//kDebug()<<geometry()<<widget()->geometry()<<endl;
 	QRect frame = widget()->geometry();
 	if(isPreview()) {
 		frame.moveTop(0);
@@ -652,7 +651,7 @@ QSize Client::minimumSize() const {
 }
 
 void Client::setBorderSize(BorderSize b) {
-	kDebug()<<"setBorderSize() : "<<endl;
+	kDebug()<<endl;
 	switch(b) {
 	  case BorderTiny:
 		framesize_ = 1;
@@ -716,7 +715,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return barEventFilter(obj, e);
 	if (obj != widget())
 		return false;
-	//kDebug()<<"eventFilter("<<e->type()<<") : "<<caption()<<endl;
+	//kDebug()<<e->type()<<" "<<caption()<<endl;
  
 	switch (e->type()) {
 	  case QEvent::MouseButtonPress:
@@ -740,7 +739,7 @@ bool Client::eventFilter(QObject *obj, QEvent *e) {
 		return true;
 	  case QEvent::Resize:
 		if(isPreview()) {
-			kDebug()<<"eventFilter"<<endl;
+			kDebug()<<"resizing from eventFilter"<<endl;
 			resizeBar();
 			return true;
 		}
@@ -833,7 +832,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 	const int corner = 32;
 	Position pos = PositionCenter;
 	
-	//kDebug()<<"mousePosition("<<point<<") : "<<caption()<<endl;
+	//kDebug()<<point<<" "<<caption()<<endl;
 
 	int x = point.x();
 	int y = point.y();
@@ -857,7 +856,7 @@ KDecoration::Position Client::mousePosition(const QPoint &point) const {
 
 // Deal with mouse click
 void Client::mousePressEvent(QMouseEvent *e) {
-	//kDebug()<<"mousePressEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<endl;
 	if(
 		e->button() == (Qt::MouseButtonMask&Qt::LeftButton) &&
 		! (bar->geometry().contains(e->pos()) && e->globalY()>1) &&
@@ -876,7 +875,7 @@ void Client::mousePressEvent(QMouseEvent *e) {
 }
 
 void Client::mouseReleaseEvent(QMouseEvent *e) {
-	//kDebug()<<"mouseReleaseEvent("<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<e->button()<<","<<e->globalX()<<","<<e->globalY()<<endl;
 
 	if(e->button()==(Qt::MouseButtonMask&Qt::LeftButton) && event !=0) {
 		delete event;
@@ -915,7 +914,7 @@ void Client::mouseReleaseEvent(QMouseEvent *e) {
 }
 
 void Client::mouseLeaveEvent(QMouseEvent * /*e*/) {
-	//kDebug()<<"mouseLeaveEvent("<<e->globalX()<<","<<e->globalY()<<")"<<endl;
+	//kDebug()<<e->globalX()<<","<<e->globalY()<<endl;
 	
 	if(event!=0) {
 		processMousePressEvent(event);
@@ -942,7 +941,7 @@ void Client::mouseDoubleClickEvent(QMouseEvent *e) {
 // Repaint the window
 void Client::paintEvent(QPaintEvent* e) {
 	unless(fitzFactoryInitialized()) return;
-	//kDebug()<<"paintEvent() : "<<caption()<<e->rect()<<endl;
+	//kDebug()<<caption()<<e->rect()<<endl;
 
 	QPainter painter(widget());
 	painter.setPen(bgc);
