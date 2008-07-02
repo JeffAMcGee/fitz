@@ -1,4 +1,8 @@
-make distclean
-gmake -f Makefile.cvs
-CFLAGS='-O0' CXXFLAGS='-O0' ./configure -C --enable-debug --prefix=/home/jeff/fitz/kde
+#!/bin/sh
+cd /home/jeff/fitz
+rm -rf build
+mkdir build
+cd build
+#CFLAGS='-O0' CXXFLAGS='-O0' ./configure -C --enable-debug --prefix=/home/jeff/fitz/kde
+cmake .. -DCMAKE_INSTALL_PREFIX=/home/jeff/fitz/kde
 make

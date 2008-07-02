@@ -1,8 +1,9 @@
 #!/bin/sh
 export PATH="/home/jeff/fitz/kde/bin:${PATH}"
 export KDEDIRS="/home/jeff/fitz/kde:${KDEDIRS}"
+cd /home/jeff/fitz/build
 make install
 killall kwin
-sleep 1
+sleep .1
 exec kwin --replace
 #kcmshell kwindecoration
