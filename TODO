@@ -10,4 +10,4 @@ make the frame and the button bar different colors
 allow fitz style click on non-maximized windows
 	Trap the mouse inside a window until the user taps the edge twice. This
 	must be off by default.
-allow user to choose buttons from crystal (???)
+allow user to choose buttons from crystal, powder, or serenity (???)
