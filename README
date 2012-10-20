@@ -1,4 +1,5 @@
-If you have any problems running Fitz, please let Jeffrey McGee
-<JeffAMcGee@gmail.com> know.
+This was a window manager for KDE 3. I attempted to port it to KDE 4, but
+stopped using Linux on the desktop before I finished.
 
-Anything that you need to know should be at http://fitz.sourcforge.net/ .
+There's lots of information about the ideas behind this project here:
+http://fitz.sourcforge.net/ .
